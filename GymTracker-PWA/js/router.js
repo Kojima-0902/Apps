@@ -51,6 +51,10 @@ const Router = {
         header.innerHTML = `<h1>グラフ</h1><div></div>`;
         Charts.render(main);
         break;
+      case 'settings':
+        header.innerHTML = `<h1>設定</h1><div></div>`;
+        Settings.render(main);
+        break;
     }
   },
 
@@ -60,7 +64,8 @@ const Router = {
       const tabPage = tab.dataset.page;
       const isActive = (tabPage === 'workouts' && (page === 'workouts' || page === 'add-workout' || page === 'workout-detail'))
         || (tabPage === 'bodyweight' && (page === 'bodyweight' || page === 'add-bodyweight'))
-        || (tabPage === 'charts' && page === 'charts');
+        || (tabPage === 'charts' && page === 'charts')
+        || (tabPage === 'settings' && page === 'settings');
       tab.classList.toggle('active', isActive);
     });
   },

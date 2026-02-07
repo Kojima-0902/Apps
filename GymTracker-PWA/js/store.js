@@ -103,4 +103,28 @@ const Store = {
     };
     return colors[group] || '#888';
   },
+
+  // Export all data as JSON
+  exportData() {
+    return JSON.stringify({
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      workouts: this.getWorkouts(),
+      bodyweights: this.getBodyWeights(),
+    }, null, 2);
+  },
+
+  // Import data from JSON string
+  importData(jsonString) {
+    const data = JSON.parse(jsonString);
+    if (!data.version || !data.workouts || !data.bodyweights) {
+      throw new Error('無効なバックアップファイルです');
+    }
+    this._set('workouts', data.workouts);
+    this._set('bodyweights', data.bodyweights);
+    return {
+      workouts: data.workouts.length,
+      bodyweights: data.bodyweights.length,
+    };
+  },
 };
