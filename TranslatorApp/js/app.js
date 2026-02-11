@@ -767,7 +767,6 @@
     function stopConversation() {
         convContinuous = false;
         stopRecognition();
-        stopAudioAnalysis();
         hideLivePreview();
         hideSpeakerIndicator();
         autoMicBtn.classList.remove('recording');
@@ -803,15 +802,10 @@
         recordingIndicator.classList.add('show');
         activeConvRecording = autoMicBtn;
 
-        // Start pitch collection if voice profile exists
-        if (voiceProfile && audioAnalyser) {
-            currentPitchSamples = [];
-            isPitchCollecting = true;
-        }
-
         // Choose recognition language:
-        // - With voice profile: use predicted speaker's language
-        // - Without voice profile: always ja-JP (existing behavior)
+        // - With voice profile: alternate based on predicted speaker
+        //   user → ja-JP, other → en-US
+        // - Without voice profile: always ja-JP + text analysis (existing)
         const recogLang = (voiceProfile && expectedSpeaker === 'other') ? 'en' : 'ja';
 
         if (voiceProfile) {
@@ -827,46 +821,33 @@
                     showLivePreview(text);
                 } else if (text.trim()) {
                     resultHandled = true;
-                    isPitchCollecting = false;
                     showLivePreview(text);
 
                     if (voiceProfile) {
-                        // Pitch-based speaker detection
-                        const isUser = isSpeakerUser(currentPitchSamples);
-
-                        if (isUser === null) {
-                            // Not enough pitch data — fall back to text analysis
+                        // Voice enrolled → use alternation + text analysis safety
+                        if (recogLang === 'ja') {
+                            // Expected user (Japanese)
                             if (isLikelyJapanese(text)) {
+                                // Confirmed: user spoke Japanese
                                 handleConvTranslate(text, 'ja');
+                                expectedSpeaker = 'other';
+                                showSpeakerIndicator('ja');
                             } else {
+                                // Katakana detected → other person spoke English
+                                // (prediction was wrong, or same person spoke twice)
                                 handleEnglishRecovery(text);
+                                expectedSpeaker = 'user';
+                                showSpeakerIndicator('en');
                             }
-                        } else if (recogLang === 'ja' && isUser) {
-                            // Correct: ja-JP recognized user's Japanese
-                            handleConvTranslate(text, 'ja');
-                            expectedSpeaker = 'other';
-                        } else if (recogLang === 'ja' && !isUser) {
-                            // ja-JP recognized other's English as katakana → recovery
-                            handleEnglishRecovery(text);
-                            expectedSpeaker = 'user';
-                        } else if (recogLang === 'en' && !isUser) {
-                            // Correct: en-US recognized other's English
+                        } else {
+                            // Expected other (English), used en-US
+                            // en-US result is proper English text
                             handleConvTranslate(text, 'en');
                             expectedSpeaker = 'user';
-                        } else if (recogLang === 'en' && isUser) {
-                            // Wrong prediction: used en-US but user spoke Japanese
-                            // en-US can't recognize Japanese well — discard & retry
-                            showToast('再認識します…');
-                            expectedSpeaker = 'user';
-                            hideLivePreview();
-                            scheduleRestart();
-                            return;
+                            showSpeakerIndicator('en');
                         }
-
-                        // Update speaker indicator for result
-                        showSpeakerIndicator(isUser !== false ? 'ja' : 'en');
                     } else {
-                        // No voice profile — text-based detection (existing behavior)
+                        // No voice profile — text-based detection (existing)
                         if (isLikelyJapanese(text)) {
                             handleConvTranslate(text, 'ja');
                         } else {
@@ -876,7 +857,6 @@
                 }
             },
             () => {
-                isPitchCollecting = false;
                 if (!resultHandled) {
                     hideLivePreview();
                     scheduleRestart();
@@ -942,7 +922,7 @@
             });
     }
 
-    autoMicBtn.addEventListener('click', async () => {
+    autoMicBtn.addEventListener('click', () => {
         if (convContinuous) {
             stopConversation();
             return;
@@ -951,12 +931,6 @@
         unlockSpeech();
         convContinuous = true;
         expectedSpeaker = 'user';
-
-        // Start audio analysis for speaker detection if voice profile exists
-        if (voiceProfile) {
-            await startAudioAnalysis();
-        }
-
         startConvListening();
     });
 
