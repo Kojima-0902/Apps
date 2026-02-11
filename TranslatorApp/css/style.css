@@ -510,6 +510,47 @@ body {
     padding: 2px 4px;
 }
 
+/* Live preview during recognition */
+.conv-live-preview {
+    padding: 10px 14px;
+    background: rgba(79, 140, 255, 0.08);
+    border: 1px solid rgba(79, 140, 255, 0.2);
+    border-radius: var(--radius);
+    margin-bottom: 8px;
+    animation: fadeInUp 0.2s ease;
+    flex-shrink: 0;
+}
+
+.conv-live-label {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--accent);
+    background: rgba(79, 140, 255, 0.15);
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-right: 8px;
+    vertical-align: middle;
+}
+
+.conv-live-label::after {
+    content: '';
+    animation: dotPulse 1.5s infinite;
+}
+
+@keyframes dotPulse {
+    0% { content: ''; }
+    25% { content: '.'; }
+    50% { content: '..'; }
+    75% { content: '...'; }
+}
+
+.conv-live-text {
+    font-size: 0.95rem;
+    color: var(--text-primary);
+    vertical-align: middle;
+}
+
 .conversation-controls {
     display: flex;
     align-items: center;

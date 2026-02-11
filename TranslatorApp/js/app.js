@@ -45,6 +45,8 @@
     const convMessages = $('#conversation-messages');
     const autoMicBtn = $('#auto-mic-btn');
     const convClearBtn = $('#conv-clear-btn');
+    const convLivePreview = $('#conv-live-preview');
+    const convLiveText = $('#conv-live-text');
 
     // History tab
     const historyList = $('#history-list');
@@ -526,6 +528,17 @@
         return japaneseRegex.test(text) ? 'ja' : 'en';
     }
 
+    // --- Live Preview Helpers ---
+    function showLivePreview(text) {
+        convLiveText.textContent = text;
+        convLivePreview.style.display = '';
+    }
+
+    function hideLivePreview() {
+        convLivePreview.style.display = 'none';
+        convLiveText.textContent = '';
+    }
+
     // --- Auto-detect Conversation Mic (Continuous) ---
     let convContinuous = false;
     const RESTART_DELAY = 300; // ms delay before restarting recognition
@@ -533,6 +546,7 @@
     function stopConversation() {
         convContinuous = false;
         stopRecognition();
+        hideLivePreview();
         autoMicBtn.classList.remove('recording');
         recordingIndicator.classList.remove('show');
         activeConvRecording = null;
@@ -557,8 +571,11 @@
         const started = startRecognition(
             'ja',
             (text, isFinal) => {
-                if (isFinal && text.trim()) {
+                if (!isFinal) {
+                    showLivePreview(text);
+                } else if (text.trim()) {
                     resultHandled = true;
+                    showLivePreview(text);
                     const detectedLang = detectLanguage(text);
 
                     if (detectedLang === 'ja') {
@@ -570,7 +587,10 @@
             },
             () => {
                 // Only restart if no result was handled (e.g. silence / no-speech error)
-                if (!resultHandled) scheduleRestart();
+                if (!resultHandled) {
+                    hideLivePreview();
+                    scheduleRestart();
+                }
             }
         );
 
@@ -593,13 +613,19 @@
         const retryStarted = startRecognition(
             'en',
             (enText, enFinal) => {
-                if (enFinal && enText.trim()) {
+                if (!enFinal) {
+                    showLivePreview(enText);
+                } else if (enText.trim()) {
                     enResultHandled = true;
+                    showLivePreview(enText);
                     handleConvTranslate(enText, 'en');
                 }
             },
             () => {
-                if (!enResultHandled) scheduleRestart();
+                if (!enResultHandled) {
+                    hideLivePreview();
+                    scheduleRestart();
+                }
             }
         );
 
@@ -611,6 +637,7 @@
     function handleConvTranslate(text, fromLang) {
         // Pause recording indicator while translating/speaking
         stopRecognition();
+        hideLivePreview();
         autoMicBtn.classList.remove('recording');
         recordingIndicator.classList.remove('show');
 
