@@ -6,7 +6,7 @@
     'use strict';
 
     // --- Version ---
-    const APP_VERSION = '1.2.0';
+    const APP_VERSION = '1.3.0';
 
     // --- State ---
     let sourceLang = 'ja';
@@ -15,6 +15,7 @@
     let recognition = null;
     let history = JSON.parse(localStorage.getItem('translator_history') || '[]');
     let activeConvRecording = null;
+    let apiEmail = localStorage.getItem('translator_api_email') || '';
 
     // --- DOM Elements ---
     const $ = (sel) => document.querySelector(sel);
@@ -58,8 +59,57 @@
     const recordingIndicator = $('#recording-indicator');
     const versionLabel = $('#version-label');
 
+    // Settings
+    const settingsBtn = $('#settings-btn');
+    const settingsOverlay = $('#settings-overlay');
+    const settingsCloseBtn = $('#settings-close-btn');
+    const settingsSaveBtn = $('#settings-save-btn');
+    const apiEmailInput = $('#api-email-input');
+    const settingsQuota = $('#settings-quota');
+
     // Show version
     versionLabel.textContent = `v${APP_VERSION}`;
+
+    // --- Settings ---
+    function updateQuotaDisplay() {
+        settingsQuota.textContent = apiEmail
+            ? `現在の上限: 50,000文字/日（${apiEmail}）`
+            : '現在の上限: 5,000文字/日（未登録）';
+    }
+
+    settingsBtn.addEventListener('click', () => {
+        apiEmailInput.value = apiEmail;
+        updateQuotaDisplay();
+        settingsOverlay.classList.add('show');
+    });
+
+    settingsCloseBtn.addEventListener('click', () => {
+        settingsOverlay.classList.remove('show');
+    });
+
+    settingsOverlay.addEventListener('click', (e) => {
+        if (e.target === settingsOverlay) {
+            settingsOverlay.classList.remove('show');
+        }
+    });
+
+    settingsSaveBtn.addEventListener('click', () => {
+        const email = apiEmailInput.value.trim();
+        if (email && !email.includes('@')) {
+            showToast('有効なメールアドレスを入力してください');
+            return;
+        }
+        apiEmail = email;
+        if (email) {
+            localStorage.setItem('translator_api_email', email);
+            showToast('保存しました（上限: 50,000文字/日）');
+        } else {
+            localStorage.removeItem('translator_api_email');
+            showToast('メールを削除しました（上限: 5,000文字/日）');
+        }
+        updateQuotaDisplay();
+        settingsOverlay.classList.remove('show');
+    });
 
     // --- Phrasebook Data ---
     const phrasebook = {
@@ -127,7 +177,10 @@
         if (!text.trim()) return '';
 
         const langPair = `${from}|${to}`;
-        const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${encodeURIComponent(langPair)}`;
+        let url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${encodeURIComponent(langPair)}`;
+        if (apiEmail) {
+            url += `&de=${encodeURIComponent(apiEmail)}`;
+        }
 
         try {
             const response = await fetch(url);

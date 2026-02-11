@@ -15,9 +15,40 @@
     <div id="app">
         <!-- Header -->
         <header class="header">
-            <h1 class="header-title">AI Translator</h1>
+            <div class="header-top">
+                <h1 class="header-title">AI Translator</h1>
+                <button class="settings-btn" id="settings-btn" aria-label="設定">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+                    </svg>
+                </button>
+            </div>
             <p class="header-subtitle">日本語 ⇄ English <span class="version-label" id="version-label"></span></p>
         </header>
+
+        <!-- Settings Modal -->
+        <div class="settings-overlay" id="settings-overlay">
+            <div class="settings-modal">
+                <div class="settings-header">
+                    <h2>設定</h2>
+                    <button class="settings-close-btn" id="settings-close-btn">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 6L6 18M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="settings-body">
+                    <div class="settings-section">
+                        <label class="settings-label">API メールアドレス</label>
+                        <p class="settings-desc">メールアドレスを登録すると翻訳上限が1日5,000文字→<strong>50,000文字</strong>に増えます。メールはMyMemory APIへの送信のみに使用されます。</p>
+                        <input type="email" class="settings-input" id="api-email-input" placeholder="example@email.com">
+                    </div>
+                    <button class="settings-save-btn" id="settings-save-btn">保存</button>
+                    <div class="settings-quota" id="settings-quota"></div>
+                </div>
+            </div>
+        </div>
 
         <!-- Tab Navigation -->
         <nav class="tab-nav">

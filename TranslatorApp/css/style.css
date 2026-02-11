@@ -62,6 +62,13 @@ body {
     flex-shrink: 0;
 }
 
+.header-top {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
 .header-title {
     font-size: 1.25rem;
     font-weight: 700;
@@ -69,6 +76,118 @@ body {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+}
+
+.settings-btn {
+    position: absolute;
+    right: 0;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 4px;
+}
+
+/* Settings Modal */
+.settings-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 300;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.settings-overlay.show {
+    display: flex;
+}
+
+.settings-modal {
+    background: var(--bg-secondary);
+    border-radius: var(--radius);
+    width: 100%;
+    max-width: 400px;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+}
+
+.settings-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+}
+
+.settings-header h2 {
+    font-size: 1.1rem;
+    color: var(--text-primary);
+}
+
+.settings-close-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+
+.settings-body {
+    padding: 20px;
+}
+
+.settings-section {
+    margin-bottom: 16px;
+}
+
+.settings-label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+}
+
+.settings-desc {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+    line-height: 1.5;
+}
+
+.settings-input {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    outline: none;
+}
+
+.settings-input:focus {
+    border-color: var(--accent);
+}
+
+.settings-save-btn {
+    width: 100%;
+    padding: 12px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.settings-quota {
+    margin-top: 12px;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-align: center;
 }
 
 .header-subtitle {
