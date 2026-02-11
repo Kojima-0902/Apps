@@ -6,7 +6,7 @@
     'use strict';
 
     // --- Version ---
-    const APP_VERSION = '1.1.0';
+    const APP_VERSION = '1.2.0';
 
     // --- State ---
     let sourceLang = 'ja';
@@ -43,6 +43,7 @@
     // Conversation tab
     const convMessages = $('#conversation-messages');
     const autoMicBtn = $('#auto-mic-btn');
+    const convClearBtn = $('#conv-clear-btn');
 
     // History tab
     const historyList = $('#history-list');
@@ -438,6 +439,18 @@
                 showToast('コピーしました');
             });
         }
+    });
+
+    // --- Conversation Clear Button ---
+    convClearBtn.addEventListener('click', () => {
+        convMessages.innerHTML = `
+            <div class="conversation-empty">
+                <p>会話モードへようこそ</p>
+                <p class="sub">下のボタンを押して日本語か英語で話しかけてください</p>
+                <p class="sub">言語を自動で認識して翻訳・読み上げします</p>
+            </div>
+        `;
+        showToast('会話をクリアしました');
     });
 
     // --- Auto Language Detection ---
