@@ -510,20 +510,45 @@
     }
 
     function speak(text, lang, onEnd) {
-        if (!window.speechSynthesis) {
-            showToast('音声読み上げに対応していません');
+        if (!window.speechSynthesis || !text) {
             if (onEnd) onEnd();
             return;
         }
         window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = lang === 'ja' ? 'ja-JP' : 'en-US';
-        utterance.rate = 0.9;
-        if (onEnd) {
-            utterance.onend = onEnd;
-            utterance.onerror = onEnd;
+
+        // Guard against double onEnd calls
+        let ended = false;
+        function callOnEnd() {
+            if (ended) return;
+            ended = true;
+            if (onEnd) onEnd();
         }
-        window.speechSynthesis.speak(utterance);
+
+        // Mobile browsers need a brief pause after cancel() before speak()
+        setTimeout(() => {
+            if (ended) return;
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = lang === 'ja' ? 'ja-JP' : 'en-US';
+            utterance.rate = 0.9;
+            utterance.onend = callOnEnd;
+            utterance.onerror = callOnEnd;
+
+            window.speechSynthesis.speak(utterance);
+
+            // Mobile Safari workaround: synthesis can silently pause
+            const watchdog = setInterval(() => {
+                if (ended) { clearInterval(watchdog); return; }
+                if (window.speechSynthesis.paused) {
+                    window.speechSynthesis.resume();
+                }
+                // Safety: if nothing is speaking after 2s, give up and continue
+                if (!window.speechSynthesis.speaking && !window.speechSynthesis.pending) {
+                    clearInterval(watchdog);
+                    callOnEnd();
+                }
+            }, 300);
+        }, 150);
     }
 
     // --- Tab Navigation ---
