@@ -550,6 +550,7 @@
         autoMicBtn.classList.remove('recording');
         recordingIndicator.classList.remove('show');
         activeConvRecording = null;
+        nextRecogLang = 'ja';
     }
 
     function scheduleRestart() {
@@ -558,6 +559,10 @@
             if (convContinuous) startConvListening();
         }, RESTART_DELAY);
     }
+
+    // Alternate recognition language: start with the language the OTHER person speaks
+    // so each turn picks up the next speaker naturally.
+    let nextRecogLang = 'ja';
 
     function startConvListening() {
         if (!convContinuous) return;
@@ -569,24 +574,20 @@
         let resultHandled = false;
 
         const started = startRecognition(
-            'ja',
+            nextRecogLang,
             (text, isFinal) => {
                 if (!isFinal) {
                     showLivePreview(text);
                 } else if (text.trim()) {
                     resultHandled = true;
                     showLivePreview(text);
-                    const detectedLang = detectLanguage(text);
 
-                    if (detectedLang === 'ja') {
-                        handleConvTranslate(text, 'ja');
-                    } else {
-                        startEnglishRetry(text);
-                    }
+                    // Detect actual language regardless of recognition mode
+                    const detectedLang = detectLanguage(text);
+                    handleConvTranslate(text, detectedLang);
                 }
             },
             () => {
-                // Only restart if no result was handled (e.g. silence / no-speech error)
                 if (!resultHandled) {
                     hideLivePreview();
                     scheduleRestart();
@@ -599,41 +600,6 @@
         }
     }
 
-    function startEnglishRetry(fallbackText) {
-        // Re-recognize with English for better accuracy
-        stopRecognition();
-        if (!convContinuous) return;
-
-        autoMicBtn.classList.add('recording');
-        recordingIndicator.classList.add('show');
-        activeConvRecording = autoMicBtn;
-
-        let enResultHandled = false;
-
-        const retryStarted = startRecognition(
-            'en',
-            (enText, enFinal) => {
-                if (!enFinal) {
-                    showLivePreview(enText);
-                } else if (enText.trim()) {
-                    enResultHandled = true;
-                    showLivePreview(enText);
-                    handleConvTranslate(enText, 'en');
-                }
-            },
-            () => {
-                if (!enResultHandled) {
-                    hideLivePreview();
-                    scheduleRestart();
-                }
-            }
-        );
-
-        if (!retryStarted) {
-            handleConvTranslate(fallbackText, 'en');
-        }
-    }
-
     function handleConvTranslate(text, fromLang) {
         // Pause recording indicator while translating/speaking
         stopRecognition();
@@ -642,6 +608,10 @@
         recordingIndicator.classList.remove('show');
 
         const toLang = fromLang === 'ja' ? 'en' : 'ja';
+
+        // Next turn: expect the OTHER language (the listener will reply)
+        nextRecogLang = toLang;
+
         translate(text, fromLang, toLang)
             .then(translated => {
                 addConversationBubble(text, translated, fromLang);
