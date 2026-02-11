@@ -560,11 +560,18 @@
         }, RESTART_DELAY);
     }
 
-    // Auto language detection: start with ja-JP, check interim results for
-    // hiragana/kanji. If none found, restart with en-US.
-    // Katakana alone is NOT counted as Japanese here because English spoken
-    // to a ja-JP recognizer often produces katakana-only output.
-    const HIRAGANA_KANJI_RE = /[\u3040-\u309F\u4E00-\u9FFF]/;
+    // Auto language detection using ja-JP recognition + final result analysis.
+    // Japanese speech → hiragana/kanji-rich → translate ja→en directly.
+    // English speech → katakana-heavy from ja-JP → recover English via ja→en,
+    // then translate en→ja to produce the real Japanese translation.
+
+    function isLikelyJapanese(text) {
+        // Count hiragana + kanji (NOT katakana — English→ja-JP produces katakana)
+        const hiraKanji = (text.match(/[\u3040-\u309F\u4E00-\u9FFF]/g) || []).length;
+        // Count total non-space, non-punctuation characters
+        const meaningful = text.replace(/[\s\p{P}]/gu, '').length || 1;
+        return hiraKanji / meaningful > 0.15;
+    }
 
     function startConvListening() {
         if (!convContinuous) return;
@@ -574,36 +581,27 @@
         activeConvRecording = autoMicBtn;
 
         let resultHandled = false;
-        let langConfirmed = false;   // true once we are sure of the language
-        let retryingAsEnglish = false;
 
         const started = startRecognition(
-            'ja',  // always probe with Japanese first
+            'ja',  // always use ja-JP; detect language from final result
             (text, isFinal) => {
                 if (!isFinal) {
-                    // Check interim result for hiragana / kanji
-                    if (!langConfirmed && text.length >= 2) {
-                        if (HIRAGANA_KANJI_RE.test(text)) {
-                            langConfirmed = true; // confirmed Japanese
-                        } else {
-                            // No hiragana/kanji → likely English, restart
-                            langConfirmed = true;
-                            retryingAsEnglish = true;
-                            stopRecognition();
-                            startConvListeningAs('en');
-                            return;
-                        }
-                    }
                     showLivePreview(text);
                 } else if (text.trim()) {
                     resultHandled = true;
                     showLivePreview(text);
-                    const detectedLang = detectLanguage(text);
-                    handleConvTranslate(text, detectedLang);
+
+                    if (isLikelyJapanese(text)) {
+                        // Genuine Japanese → translate to English
+                        handleConvTranslate(text, 'ja');
+                    } else {
+                        // Likely English recognized as katakana
+                        // Recover English via ja→en, then translate en→ja
+                        handleEnglishRecovery(text);
+                    }
                 }
             },
             () => {
-                if (retryingAsEnglish) return; // ignore end from ja probe
                 if (!resultHandled) {
                     hideLivePreview();
                     scheduleRestart();
@@ -616,38 +614,36 @@
         }
     }
 
-    // Start listening with a specific confirmed language (used after probe)
-    function startConvListeningAs(lang) {
-        if (!convContinuous) return;
+    // English was spoken but recognized as katakana by ja-JP.
+    // Step 1: translate katakana ja→en to recover English text.
+    // Step 2: translate recovered English en→ja for the Japanese listener.
+    function handleEnglishRecovery(katakanaText) {
+        stopRecognition();
+        hideLivePreview();
+        autoMicBtn.classList.remove('recording');
+        recordingIndicator.classList.remove('show');
 
-        autoMicBtn.classList.add('recording');
-        recordingIndicator.classList.add('show');
-        activeConvRecording = autoMicBtn;
-
-        let resultHandled = false;
-
-        const started = startRecognition(
-            lang,
-            (text, isFinal) => {
-                if (!isFinal) {
-                    showLivePreview(text);
-                } else if (text.trim()) {
-                    resultHandled = true;
-                    showLivePreview(text);
-                    handleConvTranslate(text, lang);
-                }
-            },
-            () => {
-                if (!resultHandled) {
-                    hideLivePreview();
-                    scheduleRestart();
-                }
-            }
-        );
-
-        if (!started) {
-            stopConversation();
-        }
+        // Step 1: recover English from katakana
+        translate(katakanaText, 'ja', 'en')
+            .then(recoveredEnglish => {
+                // Step 2: translate recovered English to proper Japanese
+                translate(recoveredEnglish, 'en', 'ja')
+                    .then(japaneseTranslation => {
+                        addConversationBubble(recoveredEnglish, japaneseTranslation, 'en');
+                        speak(japaneseTranslation, 'ja', () => {
+                            scheduleRestart();
+                        });
+                    })
+                    .catch(() => {
+                        // Fallback: show recovered English with katakana
+                        addConversationBubble(recoveredEnglish, katakanaText, 'en');
+                        scheduleRestart();
+                    });
+            })
+            .catch(() => {
+                showToast('翻訳に失敗しました');
+                scheduleRestart();
+            });
     }
 
     function handleConvTranslate(text, fromLang) {
