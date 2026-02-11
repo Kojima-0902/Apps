@@ -5,6 +5,9 @@
 (function () {
     'use strict';
 
+    // --- Version ---
+    const APP_VERSION = '1.1.0';
+
     // --- State ---
     let sourceLang = 'ja';
     let targetLang = 'en';
@@ -52,6 +55,10 @@
     // Others
     const toast = $('#toast');
     const recordingIndicator = $('#recording-indicator');
+    const versionLabel = $('#version-label');
+
+    // Show version
+    versionLabel.textContent = `v${APP_VERSION}`;
 
     // --- Phrasebook Data ---
     const phrasebook = {

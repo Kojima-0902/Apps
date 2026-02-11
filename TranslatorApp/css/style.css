@@ -77,6 +77,12 @@ body {
     margin-top: 2px;
 }
 
+.version-label {
+    opacity: 0.5;
+    font-size: 0.65rem;
+    margin-left: 4px;
+}
+
 /* Tab Navigation */
 .tab-nav {
     display: flex;
