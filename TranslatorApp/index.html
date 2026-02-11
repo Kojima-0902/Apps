@@ -112,17 +112,20 @@
                 <div class="conversation-messages" id="conversation-messages">
                     <div class="conversation-empty">
                         <p>会話モードへようこそ</p>
-                        <p class="sub">下のボタンを押して話しかけてください</p>
+                        <p class="sub">下のボタンを押して日本語か英語で話しかけてください</p>
+                        <p class="sub">言語を自動で認識して翻訳・読み上げします</p>
                     </div>
                 </div>
                 <div class="conversation-controls">
-                    <button class="conv-mic-btn ja-mic" id="ja-mic-btn">
-                        <span class="conv-flag">🇯🇵</span>
-                        <span>日本語で話す</span>
-                    </button>
-                    <button class="conv-mic-btn en-mic" id="en-mic-btn">
-                        <span class="conv-flag">🇺🇸</span>
-                        <span>Speak English</span>
+                    <button class="conv-auto-mic-btn" id="auto-mic-btn">
+                        <div class="auto-mic-icon">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                                <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                            </svg>
+                        </div>
+                        <span class="auto-mic-label">タップして話す</span>
+                        <span class="auto-mic-sub">日本語・English 自動認識</span>
                     </button>
                 </div>
             </div>
