@@ -94,7 +94,7 @@
     });
 
     settingsSaveBtn.addEventListener('click', () => {
-        const email = apiEmailInput.value.trim();
+        const email = apiEmailInput.value.trim().replace(/\uff20/g, '@');
         if (email && !email.includes('@')) {
             showToast('有効なメールアドレスを入力してください');
             return;
