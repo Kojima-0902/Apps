@@ -209,6 +209,14 @@
     }
 
     // --- Text-to-Speech ---
+    // Unlock speech synthesis on mobile (must be called during user gesture)
+    function unlockSpeech() {
+        if (!window.speechSynthesis) return;
+        const utterance = new SpeechSynthesisUtterance('');
+        utterance.volume = 0;
+        window.speechSynthesis.speak(utterance);
+    }
+
     function speak(text, lang) {
         if (!window.speechSynthesis) {
             showToast('音声読み上げに対応していません');
@@ -268,6 +276,9 @@
             showToast('テキストを入力してください');
             return;
         }
+
+        // Unlock speech on user gesture so auto-speak works after async translate
+        unlockSpeech();
 
         translateBtn.disabled = true;
         translateBtn.classList.add('loading');
@@ -438,6 +449,9 @@
             activeConvRecording = null;
             return;
         }
+
+        // Unlock speech on user gesture so auto-speak works after async translate
+        unlockSpeech();
 
         activeConvRecording = autoMicBtn;
         autoMicBtn.classList.add('recording');
