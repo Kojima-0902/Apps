@@ -277,6 +277,9 @@
             resultText.textContent = result;
             resultArea.style.display = 'block';
 
+            // Auto speak the translated result
+            speak(result, targetLang);
+
             // Add to history
             addToHistory(text, result, sourceLang, targetLang);
         } catch (err) {
