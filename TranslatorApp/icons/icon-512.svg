@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="100" fill="#1a1a2e"/>
+  <text x="256" y="200" text-anchor="middle" font-size="120" fill="#4f8cff" font-family="Arial, sans-serif" font-weight="bold">AI</text>
+  <text x="256" y="310" text-anchor="middle" font-size="64" fill="#e8e8f0" font-family="Arial, sans-serif">翻訳</text>
+  <path d="M140 360 h232" stroke="#4f8cff" stroke-width="4" opacity="0.5"/>
+  <text x="256" y="420" text-anchor="middle" font-size="40" fill="#8888a8" font-family="Arial, sans-serif">JP ⇄ EN</text>
+</svg>
