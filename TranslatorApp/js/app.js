@@ -6,7 +6,7 @@
     'use strict';
 
     // --- Version ---
-    const APP_VERSION = '1.3.0';
+    const APP_VERSION = '1.4.0';
 
     // --- State ---
     let sourceLang = 'ja';
@@ -16,6 +16,16 @@
     let history = JSON.parse(localStorage.getItem('translator_history') || '[]');
     let activeConvRecording = null;
     let apiEmail = localStorage.getItem('translator_api_email') || '';
+
+    // Voice profile state
+    let voiceProfile = JSON.parse(localStorage.getItem('translator_voice_profile') || 'null');
+    let audioCtx = null;
+    let audioAnalyser = null;
+    let audioStream = null;
+    let pitchDetectInterval = null;
+    let currentPitchSamples = [];
+    let isPitchCollecting = false;
+    let expectedSpeaker = 'user'; // predict who speaks next
 
     // --- DOM Elements ---
     const $ = (sel) => document.querySelector(sel);
@@ -68,6 +78,19 @@
     const settingsSaveBtn = $('#settings-save-btn');
     const apiEmailInput = $('#api-email-input');
     const settingsQuota = $('#settings-quota');
+
+    // Voice enrollment
+    const voiceEnrollBtn = $('#voice-enroll-btn');
+    const voiceDeleteBtn = $('#voice-delete-btn');
+    const voiceEnrollStatus = $('#voice-enroll-status');
+    const voiceEnrollProgress = $('#voice-enroll-progress');
+    const voiceEnrollFill = $('#voice-enroll-fill');
+    const voiceEnrollMsg = $('#voice-enroll-msg');
+
+    // Speaker indicator
+    const speakerIndicator = $('#conv-speaker-indicator');
+    const speakerIcon = $('#speaker-icon');
+    const speakerLabel = $('#speaker-label');
 
     // Show version
     versionLabel.textContent = `v${APP_VERSION}`;
@@ -173,6 +196,204 @@
             ]
         }
     };
+
+    // --- Pitch Detection (Autocorrelation) ---
+    function detectPitchFromBuffer(buffer, sampleRate) {
+        const SIZE = buffer.length;
+
+        // RMS check — is there enough signal?
+        let rms = 0;
+        for (let i = 0; i < SIZE; i++) rms += buffer[i] * buffer[i];
+        rms = Math.sqrt(rms / SIZE);
+        if (rms < 0.01) return { pitch: -1, rms };
+
+        // Autocorrelation to find fundamental frequency
+        // Search range: 80 Hz – 400 Hz (covers male & female voices)
+        const minPeriod = Math.floor(sampleRate / 400);
+        const maxPeriod = Math.floor(sampleRate / 80);
+        const halfSize = Math.floor(SIZE / 2);
+
+        let bestPeriod = -1;
+        let bestCorrelation = 0;
+
+        for (let tau = minPeriod; tau <= Math.min(maxPeriod, halfSize); tau++) {
+            let correlation = 0;
+            for (let i = 0; i < halfSize; i++) {
+                correlation += buffer[i] * buffer[i + tau];
+            }
+            correlation /= halfSize;
+            if (correlation > bestCorrelation) {
+                bestCorrelation = correlation;
+                bestPeriod = tau;
+            }
+        }
+
+        return {
+            pitch: bestPeriod > 0 ? sampleRate / bestPeriod : -1,
+            rms
+        };
+    }
+
+    // --- Voice Enrollment ---
+    function updateVoiceProfileUI() {
+        if (voiceProfile) {
+            voiceEnrollStatus.textContent = `登録済み（平均ピッチ: ${Math.round(voiceProfile.avgPitch)} Hz）`;
+            voiceEnrollStatus.className = 'voice-enroll-status enrolled';
+            voiceDeleteBtn.style.display = '';
+            voiceEnrollBtn.textContent = '再登録する';
+        } else {
+            voiceEnrollStatus.textContent = '未登録';
+            voiceEnrollStatus.className = 'voice-enroll-status';
+            voiceDeleteBtn.style.display = 'none';
+            voiceEnrollBtn.textContent = '声を登録する';
+        }
+    }
+
+    async function enrollVoice() {
+        let stream, ctx, interval;
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const source = ctx.createMediaStreamSource(stream);
+            const analyser = ctx.createAnalyser();
+            analyser.fftSize = 2048;
+            source.connect(analyser);
+
+            const buffer = new Float32Array(analyser.fftSize);
+            const pitchSamples = [];
+            const duration = 3000;
+            const startTime = Date.now();
+
+            voiceEnrollProgress.style.display = '';
+            voiceEnrollMsg.textContent = '何か話してください…（3秒間）';
+            voiceEnrollBtn.disabled = true;
+
+            return new Promise((resolve) => {
+                interval = setInterval(() => {
+                    const elapsed = Date.now() - startTime;
+                    voiceEnrollFill.style.width = (Math.min(elapsed / duration, 1) * 100) + '%';
+
+                    analyser.getFloatTimeDomainData(buffer);
+                    const { pitch, rms } = detectPitchFromBuffer(buffer, ctx.sampleRate);
+                    if (pitch > 0 && rms > 0.01) pitchSamples.push(pitch);
+
+                    if (elapsed >= duration) {
+                        clearInterval(interval);
+                        stream.getTracks().forEach(t => t.stop());
+                        ctx.close();
+
+                        if (pitchSamples.length < 5) {
+                            voiceEnrollMsg.textContent = '声が検出できませんでした。もう一度お試しください。';
+                            voiceEnrollBtn.disabled = false;
+                            setTimeout(() => { voiceEnrollProgress.style.display = 'none'; }, 2000);
+                            resolve(false);
+                            return;
+                        }
+
+                        // Remove outliers (trim 10%)
+                        const sorted = [...pitchSamples].sort((a, b) => a - b);
+                        const lo = Math.floor(sorted.length * 0.1);
+                        const hi = Math.ceil(sorted.length * 0.9);
+                        const trimmed = sorted.slice(lo, hi);
+                        const avg = trimmed.reduce((a, b) => a + b, 0) / trimmed.length;
+                        const std = Math.sqrt(trimmed.reduce((s, p) => s + (p - avg) ** 2, 0) / trimmed.length);
+
+                        voiceProfile = { avgPitch: avg, pitchStd: std, sampleCount: pitchSamples.length, enrolledAt: Date.now() };
+                        localStorage.setItem('translator_voice_profile', JSON.stringify(voiceProfile));
+
+                        voiceEnrollMsg.textContent = `登録完了！（平均: ${Math.round(avg)} Hz）`;
+                        voiceEnrollBtn.disabled = false;
+                        updateVoiceProfileUI();
+                        setTimeout(() => { voiceEnrollProgress.style.display = 'none'; }, 2500);
+                        resolve(true);
+                    }
+                }, 1000 / 30);
+            });
+        } catch (err) {
+            console.error('Enrollment error:', err);
+            showToast('マイクへのアクセスを許可してください');
+            voiceEnrollBtn.disabled = false;
+            if (stream) stream.getTracks().forEach(t => t.stop());
+            if (ctx) ctx.close();
+            return false;
+        }
+    }
+
+    voiceEnrollBtn.addEventListener('click', () => enrollVoice());
+
+    voiceDeleteBtn.addEventListener('click', () => {
+        voiceProfile = null;
+        localStorage.removeItem('translator_voice_profile');
+        updateVoiceProfileUI();
+        showToast('声の登録を削除しました');
+    });
+
+    updateVoiceProfileUI();
+
+    // --- Audio Analysis for Speaker Detection ---
+    async function startAudioAnalysis() {
+        if (audioCtx) return;
+        try {
+            audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const source = audioCtx.createMediaStreamSource(audioStream);
+            audioAnalyser = audioCtx.createAnalyser();
+            audioAnalyser.fftSize = 2048;
+            source.connect(audioAnalyser);
+
+            const buffer = new Float32Array(audioAnalyser.fftSize);
+
+            pitchDetectInterval = setInterval(() => {
+                if (!isPitchCollecting) return;
+                audioAnalyser.getFloatTimeDomainData(buffer);
+                const { pitch, rms } = detectPitchFromBuffer(buffer, audioCtx.sampleRate);
+                if (pitch > 0 && rms > 0.01) currentPitchSamples.push(pitch);
+            }, 50); // 20fps
+        } catch (err) {
+            console.error('Audio analysis error:', err);
+        }
+    }
+
+    function stopAudioAnalysis() {
+        if (pitchDetectInterval) { clearInterval(pitchDetectInterval); pitchDetectInterval = null; }
+        if (audioStream) { audioStream.getTracks().forEach(t => t.stop()); audioStream = null; }
+        if (audioCtx) { audioCtx.close(); audioCtx = null; }
+        audioAnalyser = null;
+        isPitchCollecting = false;
+        currentPitchSamples = [];
+    }
+
+    function isSpeakerUser(samples) {
+        if (!voiceProfile || samples.length < 3) return null; // can't determine
+
+        const sorted = [...samples].sort((a, b) => a - b);
+        const lo = Math.floor(sorted.length * 0.1);
+        const hi = Math.max(Math.ceil(sorted.length * 0.9), lo + 1);
+        const trimmed = sorted.slice(lo, hi);
+        const avg = trimmed.reduce((a, b) => a + b, 0) / trimmed.length;
+
+        // Match if within 2.5 std deviations or 25% of enrolled pitch
+        const threshold = Math.max(voiceProfile.pitchStd * 2.5, voiceProfile.avgPitch * 0.25);
+        return Math.abs(avg - voiceProfile.avgPitch) <= threshold;
+    }
+
+    function showSpeakerIndicator(lang) {
+        if (!speakerIndicator) return;
+        speakerIndicator.style.display = '';
+        if (lang === 'ja') {
+            speakerIcon.textContent = '🇯🇵';
+            speakerLabel.textContent = 'あなた（日本語）';
+            speakerIndicator.className = 'conv-speaker-indicator speaker-ja';
+        } else {
+            speakerIcon.textContent = '🇺🇸';
+            speakerLabel.textContent = '相手（English）';
+            speakerIndicator.className = 'conv-speaker-indicator speaker-en';
+        }
+    }
+
+    function hideSpeakerIndicator() {
+        if (speakerIndicator) speakerIndicator.style.display = 'none';
+    }
 
     // --- Translation API ---
     async function translate(text, from, to) {
@@ -514,8 +735,8 @@
         convMessages.innerHTML = `
             <div class="conversation-empty">
                 <p>会話モードへようこそ</p>
-                <p class="sub">下のボタンを押して日本語か英語で話しかけてください</p>
-                <p class="sub">言語を自動で認識して翻訳・読み上げします</p>
+                <p class="sub">下のボタンを押して話しかけてください</p>
+                <p class="sub">設定で声を登録すると話者を自動判別します</p>
             </div>
         `;
         showToast('会話をクリアしました');
@@ -546,11 +767,13 @@
     function stopConversation() {
         convContinuous = false;
         stopRecognition();
+        stopAudioAnalysis();
         hideLivePreview();
+        hideSpeakerIndicator();
         autoMicBtn.classList.remove('recording');
         recordingIndicator.classList.remove('show');
         activeConvRecording = null;
-        nextRecogLang = 'ja';
+        expectedSpeaker = 'user';
     }
 
     function scheduleRestart() {
@@ -580,28 +803,80 @@
         recordingIndicator.classList.add('show');
         activeConvRecording = autoMicBtn;
 
+        // Start pitch collection if voice profile exists
+        if (voiceProfile && audioAnalyser) {
+            currentPitchSamples = [];
+            isPitchCollecting = true;
+        }
+
+        // Choose recognition language:
+        // - With voice profile: use predicted speaker's language
+        // - Without voice profile: always ja-JP (existing behavior)
+        const recogLang = (voiceProfile && expectedSpeaker === 'other') ? 'en' : 'ja';
+
+        if (voiceProfile) {
+            showSpeakerIndicator(recogLang === 'ja' ? 'ja' : 'en');
+        }
+
         let resultHandled = false;
 
         const started = startRecognition(
-            'ja',  // always use ja-JP; detect language from final result
+            recogLang,
             (text, isFinal) => {
                 if (!isFinal) {
                     showLivePreview(text);
                 } else if (text.trim()) {
                     resultHandled = true;
+                    isPitchCollecting = false;
                     showLivePreview(text);
 
-                    if (isLikelyJapanese(text)) {
-                        // Genuine Japanese → translate to English
-                        handleConvTranslate(text, 'ja');
+                    if (voiceProfile) {
+                        // Pitch-based speaker detection
+                        const isUser = isSpeakerUser(currentPitchSamples);
+
+                        if (isUser === null) {
+                            // Not enough pitch data — fall back to text analysis
+                            if (isLikelyJapanese(text)) {
+                                handleConvTranslate(text, 'ja');
+                            } else {
+                                handleEnglishRecovery(text);
+                            }
+                        } else if (recogLang === 'ja' && isUser) {
+                            // Correct: ja-JP recognized user's Japanese
+                            handleConvTranslate(text, 'ja');
+                            expectedSpeaker = 'other';
+                        } else if (recogLang === 'ja' && !isUser) {
+                            // ja-JP recognized other's English as katakana → recovery
+                            handleEnglishRecovery(text);
+                            expectedSpeaker = 'user';
+                        } else if (recogLang === 'en' && !isUser) {
+                            // Correct: en-US recognized other's English
+                            handleConvTranslate(text, 'en');
+                            expectedSpeaker = 'user';
+                        } else if (recogLang === 'en' && isUser) {
+                            // Wrong prediction: used en-US but user spoke Japanese
+                            // en-US can't recognize Japanese well — discard & retry
+                            showToast('再認識します…');
+                            expectedSpeaker = 'user';
+                            hideLivePreview();
+                            scheduleRestart();
+                            return;
+                        }
+
+                        // Update speaker indicator for result
+                        showSpeakerIndicator(isUser !== false ? 'ja' : 'en');
                     } else {
-                        // Likely English recognized as katakana
-                        // Recover English via ja→en, then translate en→ja
-                        handleEnglishRecovery(text);
+                        // No voice profile — text-based detection (existing behavior)
+                        if (isLikelyJapanese(text)) {
+                            handleConvTranslate(text, 'ja');
+                        } else {
+                            handleEnglishRecovery(text);
+                        }
                     }
                 }
             },
             () => {
+                isPitchCollecting = false;
                 if (!resultHandled) {
                     hideLivePreview();
                     scheduleRestart();
@@ -667,7 +942,7 @@
             });
     }
 
-    autoMicBtn.addEventListener('click', () => {
+    autoMicBtn.addEventListener('click', async () => {
         if (convContinuous) {
             stopConversation();
             return;
@@ -675,6 +950,13 @@
 
         unlockSpeech();
         convContinuous = true;
+        expectedSpeaker = 'user';
+
+        // Start audio analysis for speaker detection if voice profile exists
+        if (voiceProfile) {
+            await startAudioAnalysis();
+        }
+
         startConvListening();
     });
 

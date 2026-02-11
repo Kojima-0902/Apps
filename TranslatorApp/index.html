@@ -46,6 +46,24 @@
                     </div>
                     <button class="settings-save-btn" id="settings-save-btn">保存</button>
                     <div class="settings-quota" id="settings-quota"></div>
+
+                    <div class="settings-divider"></div>
+
+                    <div class="settings-section">
+                        <label class="settings-label">声の登録（会話モード用）</label>
+                        <p class="settings-desc">あなたの声を登録すると、会話モードで<strong>話者を自動判別</strong>します。あなた→日本語、相手→英語として認識します。</p>
+                        <div class="voice-enroll-status" id="voice-enroll-status"></div>
+                        <div class="voice-enroll-progress" id="voice-enroll-progress" style="display:none;">
+                            <div class="voice-enroll-bar">
+                                <div class="voice-enroll-fill" id="voice-enroll-fill"></div>
+                            </div>
+                            <p class="voice-enroll-msg" id="voice-enroll-msg"></p>
+                        </div>
+                        <div class="voice-enroll-actions">
+                            <button class="voice-enroll-btn" id="voice-enroll-btn">声を登録する</button>
+                            <button class="voice-delete-btn" id="voice-delete-btn" style="display:none">削除</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -143,9 +161,13 @@
                 <div class="conversation-messages" id="conversation-messages">
                     <div class="conversation-empty">
                         <p>会話モードへようこそ</p>
-                        <p class="sub">下のボタンを押して日本語か英語で話しかけてください</p>
-                        <p class="sub">言語を自動で認識して翻訳・読み上げします</p>
+                        <p class="sub">下のボタンを押して話しかけてください</p>
+                        <p class="sub">設定で声を登録すると話者を自動判別します</p>
                     </div>
+                </div>
+                <div class="conv-speaker-indicator" id="conv-speaker-indicator" style="display:none;">
+                    <span class="speaker-icon" id="speaker-icon"></span>
+                    <span class="speaker-label" id="speaker-label"></span>
                 </div>
                 <div class="conv-live-preview" id="conv-live-preview" style="display:none;">
                     <span class="conv-live-label">認識中</span>
@@ -165,7 +187,7 @@
                             </svg>
                         </div>
                         <span class="auto-mic-label">タップして話す</span>
-                        <span class="auto-mic-sub">日本語・English 自動認識</span>
+                        <span class="auto-mic-sub">話者を自動判別して翻訳</span>
                     </button>
                 </div>
             </div>
