@@ -1,4 +1,4 @@
-const CACHE_NAME = 'translator-v1';
+const CACHE_NAME = 'translator-v2';
 const ASSETS = [
     './',
     './index.html',
@@ -29,7 +29,7 @@ self.addEventListener('activate', (event) => {
     self.clients.claim();
 });
 
-// Fetch - Network first for API calls, cache first for assets
+// Fetch - Network first, fallback to cache
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
 
@@ -45,18 +45,18 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // Cache first for app assets
+    // Network first for app assets, fallback to cache
     event.respondWith(
-        caches.match(event.request).then((cached) => {
-            return cached || fetch(event.request).then((response) => {
-                if (response.status === 200) {
-                    const clone = response.clone();
-                    caches.open(CACHE_NAME).then((cache) => {
-                        cache.put(event.request, clone);
-                    });
-                }
-                return response;
-            });
+        fetch(event.request).then((response) => {
+            if (response.status === 200) {
+                const clone = response.clone();
+                caches.open(CACHE_NAME).then((cache) => {
+                    cache.put(event.request, clone);
+                });
+            }
+            return response;
+        }).catch(() => {
+            return caches.match(event.request);
         })
     );
 });

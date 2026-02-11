@@ -629,6 +629,40 @@ body {
 }
 
 /* Toast */
+/* Update banner */
+.update-banner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(135deg, var(--accent), #6c5ce7);
+    color: #fff;
+    padding: 12px 16px;
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.9rem;
+    font-weight: 600;
+    z-index: 200;
+    box-shadow: 0 2px 12px rgba(79, 140, 255, 0.4);
+}
+
+.update-banner.show {
+    display: flex;
+}
+
+.update-btn {
+    background: #fff;
+    color: var(--accent);
+    border: none;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
 .toast {
     position: fixed;
     bottom: 100px;

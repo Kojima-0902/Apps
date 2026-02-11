@@ -653,10 +653,47 @@
         return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
-    // --- PWA Registration ---
+    // --- PWA Registration & Update Detection ---
+    const updateBanner = $('#update-banner');
+    const updateBtn = $('#update-btn');
+
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js').catch(err => {
+        navigator.serviceWorker.register('sw.js').then(reg => {
+            // Check for updates on page load
+            reg.update();
+
+            // Detect waiting service worker (new version ready)
+            function showUpdateBanner() {
+                updateBanner.classList.add('show');
+            }
+
+            if (reg.waiting) {
+                showUpdateBanner();
+            }
+
+            reg.addEventListener('updatefound', () => {
+                const newWorker = reg.installing;
+                newWorker.addEventListener('statechange', () => {
+                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                        showUpdateBanner();
+                    }
+                });
+            });
+
+            // Update button click: activate new SW and reload
+            updateBtn.addEventListener('click', () => {
+                if (reg.waiting) {
+                    reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+                }
+                window.location.reload();
+            });
+        }).catch(err => {
             console.log('SW registration failed:', err);
+        });
+
+        // Reload when new SW takes control
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+            window.location.reload();
         });
     }
 })();
