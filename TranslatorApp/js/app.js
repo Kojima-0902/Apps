@@ -560,9 +560,11 @@
         }, RESTART_DELAY);
     }
 
-    // Alternate recognition language: start with the language the OTHER person speaks
-    // so each turn picks up the next speaker naturally.
-    let nextRecogLang = 'ja';
+    // Auto language detection: start with ja-JP, check interim results for
+    // hiragana/kanji. If none found, restart with en-US.
+    // Katakana alone is NOT counted as Japanese here because English spoken
+    // to a ja-JP recognizer often produces katakana-only output.
+    const HIRAGANA_KANJI_RE = /[\u3040-\u309F\u4E00-\u9FFF]/;
 
     function startConvListening() {
         if (!convContinuous) return;
@@ -572,19 +574,67 @@
         activeConvRecording = autoMicBtn;
 
         let resultHandled = false;
+        let langConfirmed = false;   // true once we are sure of the language
+        let retryingAsEnglish = false;
 
         const started = startRecognition(
-            nextRecogLang,
+            'ja',  // always probe with Japanese first
+            (text, isFinal) => {
+                if (!isFinal) {
+                    // Check interim result for hiragana / kanji
+                    if (!langConfirmed && text.length >= 2) {
+                        if (HIRAGANA_KANJI_RE.test(text)) {
+                            langConfirmed = true; // confirmed Japanese
+                        } else {
+                            // No hiragana/kanji → likely English, restart
+                            langConfirmed = true;
+                            retryingAsEnglish = true;
+                            stopRecognition();
+                            startConvListeningAs('en');
+                            return;
+                        }
+                    }
+                    showLivePreview(text);
+                } else if (text.trim()) {
+                    resultHandled = true;
+                    showLivePreview(text);
+                    const detectedLang = detectLanguage(text);
+                    handleConvTranslate(text, detectedLang);
+                }
+            },
+            () => {
+                if (retryingAsEnglish) return; // ignore end from ja probe
+                if (!resultHandled) {
+                    hideLivePreview();
+                    scheduleRestart();
+                }
+            }
+        );
+
+        if (!started) {
+            stopConversation();
+        }
+    }
+
+    // Start listening with a specific confirmed language (used after probe)
+    function startConvListeningAs(lang) {
+        if (!convContinuous) return;
+
+        autoMicBtn.classList.add('recording');
+        recordingIndicator.classList.add('show');
+        activeConvRecording = autoMicBtn;
+
+        let resultHandled = false;
+
+        const started = startRecognition(
+            lang,
             (text, isFinal) => {
                 if (!isFinal) {
                     showLivePreview(text);
                 } else if (text.trim()) {
                     resultHandled = true;
                     showLivePreview(text);
-
-                    // Detect actual language regardless of recognition mode
-                    const detectedLang = detectLanguage(text);
-                    handleConvTranslate(text, detectedLang);
+                    handleConvTranslate(text, lang);
                 }
             },
             () => {
@@ -601,7 +651,6 @@
     }
 
     function handleConvTranslate(text, fromLang) {
-        // Pause recording indicator while translating/speaking
         stopRecognition();
         hideLivePreview();
         autoMicBtn.classList.remove('recording');
@@ -609,13 +658,9 @@
 
         const toLang = fromLang === 'ja' ? 'en' : 'ja';
 
-        // Always use the language selected by toggle for next recognition
-        nextRecogLang = convStartLang;
-
         translate(text, fromLang, toLang)
             .then(translated => {
                 addConversationBubble(text, translated, fromLang);
-                // After speaking finishes, automatically resume listening
                 speak(translated, toLang, () => {
                     scheduleRestart();
                 });
@@ -626,23 +671,6 @@
             });
     }
 
-    // Language toggle: select starting language before tapping mic
-    let convStartLang = 'ja';
-    const langToggle = document.getElementById('conv-lang-toggle');
-    const langOptions = langToggle.querySelectorAll('.conv-lang-option');
-
-    langToggle.addEventListener('click', (e) => {
-        const option = e.target.closest('.conv-lang-option');
-        if (!option || convContinuous) return;
-
-        const lang = option.dataset.lang;
-        convStartLang = lang;
-
-        langOptions.forEach(o => o.classList.remove('active'));
-        option.classList.add('active');
-        langToggle.classList.toggle('en-active', lang === 'en');
-    });
-
     autoMicBtn.addEventListener('click', () => {
         if (convContinuous) {
             stopConversation();
@@ -650,7 +678,6 @@
         }
 
         unlockSpeech();
-        nextRecogLang = convStartLang;
         convContinuous = true;
         startConvListening();
     });
