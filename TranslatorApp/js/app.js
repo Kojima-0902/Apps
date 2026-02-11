@@ -278,15 +278,20 @@
         window.speechSynthesis.speak(utterance);
     }
 
-    function speak(text, lang) {
+    function speak(text, lang, onEnd) {
         if (!window.speechSynthesis) {
             showToast('音声読み上げに対応していません');
+            if (onEnd) onEnd();
             return;
         }
         window.speechSynthesis.cancel();
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = lang === 'ja' ? 'ja-JP' : 'en-US';
         utterance.rate = 0.9;
+        if (onEnd) {
+            utterance.onend = onEnd;
+            utterance.onerror = onEnd;
+        }
         window.speechSynthesis.speak(utterance);
     }
 
@@ -513,42 +518,24 @@
         return japaneseRegex.test(text) ? 'ja' : 'en';
     }
 
-    // --- Auto-detect Conversation Mic ---
-    function handleConvResult(text, fromLang) {
-        autoMicBtn.classList.remove('recording');
-        recordingIndicator.classList.remove('show');
-        activeConvRecording = null;
+    // --- Auto-detect Conversation Mic (Continuous) ---
+    let convContinuous = false;
 
-        const toLang = fromLang === 'ja' ? 'en' : 'ja';
-        translate(text, fromLang, toLang)
-            .then(translated => {
-                addConversationBubble(text, translated, fromLang);
-                speak(translated, toLang);
-            })
-            .catch(() => showToast('翻訳に失敗しました'));
-    }
-
-    function finishConvRecording() {
+    function stopConversation() {
+        convContinuous = false;
+        stopRecognition();
         autoMicBtn.classList.remove('recording');
         recordingIndicator.classList.remove('show');
         activeConvRecording = null;
     }
 
-    autoMicBtn.addEventListener('click', async () => {
-        if (activeConvRecording) {
-            stopRecognition();
-            finishConvRecording();
-            return;
-        }
+    function startConvListening() {
+        if (!convContinuous) return;
 
-        // Unlock speech on user gesture so auto-speak works after async translate
-        unlockSpeech();
-
-        activeConvRecording = autoMicBtn;
         autoMicBtn.classList.add('recording');
         recordingIndicator.classList.add('show');
+        activeConvRecording = autoMicBtn;
 
-        // Phase 1: Start with Japanese recognition
         const started = startRecognition(
             'ja',
             (text, isFinal) => {
@@ -556,11 +543,12 @@
                     const detectedLang = detectLanguage(text);
 
                     if (detectedLang === 'ja') {
-                        // Japanese detected - translate to English
-                        handleConvResult(text, 'ja');
+                        handleConvTranslate(text, 'ja');
                     } else {
-                        // No Japanese characters detected - re-recognize with English
+                        // Re-recognize with English for better accuracy
                         stopRecognition();
+                        if (!convContinuous) return;
+
                         autoMicBtn.classList.add('recording');
                         recordingIndicator.classList.add('show');
                         activeConvRecording = autoMicBtn;
@@ -569,25 +557,60 @@
                             'en',
                             (enText, enFinal) => {
                                 if (enFinal && enText.trim()) {
-                                    handleConvResult(enText, 'en');
+                                    handleConvTranslate(enText, 'en');
                                 }
                             },
-                            finishConvRecording
+                            () => { if (convContinuous) startConvListening(); }
                         );
 
                         if (!retryStarted) {
-                            // Fallback: use the Japanese-mode text as-is
-                            handleConvResult(text, 'en');
+                            handleConvTranslate(text, 'en');
                         }
                     }
                 }
             },
-            finishConvRecording
+            () => {
+                // Recognition ended without result - restart if still active
+                if (convContinuous) startConvListening();
+            }
         );
 
         if (!started) {
-            finishConvRecording();
+            stopConversation();
         }
+    }
+
+    function handleConvTranslate(text, fromLang) {
+        // Pause recording indicator while translating/speaking
+        autoMicBtn.classList.remove('recording');
+        recordingIndicator.classList.remove('show');
+
+        const toLang = fromLang === 'ja' ? 'en' : 'ja';
+        translate(text, fromLang, toLang)
+            .then(translated => {
+                addConversationBubble(text, translated, fromLang);
+                // After speaking finishes, automatically resume listening
+                speak(translated, toLang, () => {
+                    if (convContinuous) startConvListening();
+                });
+            })
+            .catch(() => {
+                showToast('翻訳に失敗しました');
+                if (convContinuous) startConvListening();
+            });
+    }
+
+    autoMicBtn.addEventListener('click', () => {
+        if (convContinuous) {
+            stopConversation();
+            return;
+        }
+
+        // Unlock speech on user gesture
+        unlockSpeech();
+
+        convContinuous = true;
+        startConvListening();
     });
 
     // --- Phrasebook ---
