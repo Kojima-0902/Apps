@@ -387,61 +387,82 @@ body {
 
 .conversation-controls {
     display: flex;
-    gap: 10px;
     padding: 12px 0;
     flex-shrink: 0;
 }
 
-.conv-mic-btn {
-    flex: 1;
+.conv-auto-mic-btn {
+    width: 100%;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 14px;
-    border: none;
+    gap: 6px;
+    padding: 18px 14px;
+    background: linear-gradient(135deg, rgba(79, 140, 255, 0.15), rgba(168, 85, 247, 0.15));
+    border: 1px solid rgba(79, 140, 255, 0.3);
     border-radius: var(--radius);
-    font-size: 0.9rem;
-    font-weight: 600;
+    color: var(--accent);
     cursor: pointer;
     transition: all 0.2s;
 }
 
-.conv-mic-btn:active {
+.conv-auto-mic-btn:active {
     transform: scale(0.97);
 }
 
-.ja-mic {
-    background: var(--ja-bg);
-    color: var(--ja-color);
-    border: 1px solid rgba(255, 107, 138, 0.3);
+.auto-mic-icon {
+    width: 56px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--accent), #a855f7);
+    border-radius: 50%;
+    color: white;
+    transition: all 0.3s;
 }
 
-.en-mic {
-    background: var(--en-bg);
-    color: var(--en-color);
-    border: 1px solid rgba(79, 195, 247, 0.3);
+.auto-mic-label {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
 }
 
-.conv-mic-btn.recording {
-    animation: pulse-border 1s infinite;
+.auto-mic-sub {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
 }
 
-.ja-mic.recording {
-    box-shadow: 0 0 20px rgba(255, 107, 138, 0.4);
+.conv-auto-mic-btn.recording {
+    background: linear-gradient(135deg, rgba(255, 82, 82, 0.15), rgba(255, 107, 138, 0.15));
+    border-color: rgba(255, 82, 82, 0.4);
 }
 
-.en-mic.recording {
-    box-shadow: 0 0 20px rgba(79, 195, 247, 0.4);
+.conv-auto-mic-btn.recording .auto-mic-icon {
+    background: linear-gradient(135deg, var(--danger), #ff6b8a);
+    animation: pulse-auto-mic 1s infinite;
+    box-shadow: 0 0 24px rgba(255, 82, 82, 0.5);
 }
 
-@keyframes pulse-border {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
+.conv-auto-mic-btn.recording .auto-mic-label {
+    color: var(--danger);
 }
 
-.conv-flag {
-    font-size: 1.3rem;
+.conv-auto-mic-btn.recording .auto-mic-label::after {
+    content: '録音中...タップで停止';
+}
+
+.conv-auto-mic-btn.recording .auto-mic-label {
+    font-size: 0;
+}
+
+.conv-auto-mic-btn.recording .auto-mic-label::after {
+    font-size: 1rem;
+}
+
+@keyframes pulse-auto-mic {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.08); }
 }
 
 /* Phrasebook Tab */

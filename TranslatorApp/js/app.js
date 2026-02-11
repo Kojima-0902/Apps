@@ -39,8 +39,7 @@
 
     // Conversation tab
     const convMessages = $('#conversation-messages');
-    const jaMicBtn = $('#ja-mic-btn');
-    const enMicBtn = $('#en-mic-btn');
+    const autoMicBtn = $('#auto-mic-btn');
 
     // History tab
     const historyList = $('#history-list');
@@ -420,58 +419,79 @@
         }
     });
 
-    function setupConvMic(btn, lang) {
-        btn.addEventListener('click', async () => {
-            if (activeConvRecording) {
-                stopRecognition();
-                activeConvRecording.classList.remove('recording');
-                recordingIndicator.classList.remove('show');
-                activeConvRecording = null;
-                return;
-            }
+    // --- Auto Language Detection ---
+    function detectLanguage(text) {
+        // Japanese characters: hiragana, katakana, CJK unified ideographs
+        const japaneseRegex = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]/;
+        return japaneseRegex.test(text) ? 'ja' : 'en';
+    }
 
-            activeConvRecording = btn;
-            btn.classList.add('recording');
-            recordingIndicator.classList.add('show');
+    // --- Auto-detect Conversation Mic ---
+    autoMicBtn.addEventListener('click', async () => {
+        if (activeConvRecording) {
+            stopRecognition();
+            autoMicBtn.classList.remove('recording');
+            recordingIndicator.classList.remove('show');
+            activeConvRecording = null;
+            return;
+        }
 
-            const started = startRecognition(
-                lang,
-                async (text, isFinal) => {
-                    if (isFinal && text.trim()) {
-                        btn.classList.remove('recording');
+        activeConvRecording = autoMicBtn;
+        autoMicBtn.classList.add('recording');
+        recordingIndicator.classList.add('show');
+
+        // Start with Japanese recognition (handles mixed input well)
+        const started = startRecognition(
+            'ja',
+            async (text, isFinal) => {
+                if (isFinal && text.trim()) {
+                    const detectedLang = detectLanguage(text);
+
+                    // If detected as English, re-recognize with English for better accuracy
+                    if (detectedLang === 'en') {
+                        autoMicBtn.classList.remove('recording');
                         recordingIndicator.classList.remove('show');
                         activeConvRecording = null;
 
                         try {
-                            const fromLang = lang;
-                            const toLang = lang === 'ja' ? 'en' : 'ja';
-                            const translated = await translate(text, fromLang, toLang);
-                            addConversationBubble(text, translated, lang);
-
-                            // Auto-speak the translation
+                            const toLang = 'ja';
+                            const translated = await translate(text, 'en', toLang);
+                            addConversationBubble(text, translated, 'en');
                             speak(translated, toLang);
                         } catch (err) {
                             showToast('翻訳に失敗しました');
                         }
+                        return;
                     }
-                },
-                () => {
-                    btn.classList.remove('recording');
+
+                    // Japanese detected
+                    autoMicBtn.classList.remove('recording');
                     recordingIndicator.classList.remove('show');
                     activeConvRecording = null;
+
+                    try {
+                        const toLang = 'en';
+                        const translated = await translate(text, 'ja', toLang);
+                        addConversationBubble(text, translated, 'ja');
+                        speak(translated, toLang);
+                    } catch (err) {
+                        showToast('翻訳に失敗しました');
+                    }
                 }
-            );
-
-            if (!started) {
-                activeConvRecording = null;
-                btn.classList.remove('recording');
+            },
+            () => {
+                autoMicBtn.classList.remove('recording');
                 recordingIndicator.classList.remove('show');
+                activeConvRecording = null;
             }
-        });
-    }
+        );
 
-    setupConvMic(jaMicBtn, 'ja');
-    setupConvMic(enMicBtn, 'en');
+        if (!started) {
+            activeConvRecording = null;
+            autoMicBtn.classList.remove('recording');
+            recordingIndicator.classList.remove('show');
+        }
+    });
 
     // --- Phrasebook ---
     function renderPhrasebook() {
