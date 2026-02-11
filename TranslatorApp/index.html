@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#1a1a2e">
+    <title>AI Translator - 日英翻訳</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icons/icon-192.svg">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header class="header">
+            <h1 class="header-title">AI Translator</h1>
+            <p class="header-subtitle">日本語 ⇄ English</p>
+        </header>
+
+        <!-- Tab Navigation -->
+        <nav class="tab-nav">
+            <button class="tab-btn active" data-tab="translate">
+                <span class="tab-icon">🔄</span>
+                <span>翻訳</span>
+            </button>
+            <button class="tab-btn" data-tab="conversation">
+                <span class="tab-icon">💬</span>
+                <span>会話</span>
+            </button>
+            <button class="tab-btn" data-tab="phrasebook">
+                <span class="tab-icon">📖</span>
+                <span>フレーズ</span>
+            </button>
+            <button class="tab-btn" data-tab="history">
+                <span class="tab-icon">📋</span>
+                <span>履歴</span>
+            </button>
+        </nav>
+
+        <!-- Translate Tab -->
+        <section id="tab-translate" class="tab-content active">
+            <div class="translate-card">
+                <div class="lang-selector">
+                    <button class="lang-btn active" id="source-lang-btn">
+                        <span class="lang-flag">🇯🇵</span>
+                        <span id="source-lang-label">日本語</span>
+                    </button>
+                    <button class="swap-btn" id="swap-lang-btn" aria-label="言語を入替">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M7 16l-4-4 4-4M17 8l4 4-4 4M3 12h18"/>
+                        </svg>
+                    </button>
+                    <button class="lang-btn" id="target-lang-btn">
+                        <span class="lang-flag">🇺🇸</span>
+                        <span id="target-lang-label">English</span>
+                    </button>
+                </div>
+
+                <div class="input-area">
+                    <textarea id="source-text" placeholder="翻訳したいテキストを入力..." rows="4"></textarea>
+                    <div class="input-actions">
+                        <button class="action-btn mic-btn" id="mic-btn" aria-label="音声入力">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                                <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                            </svg>
+                        </button>
+                        <button class="action-btn clear-btn" id="clear-btn" aria-label="クリア">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M18 6L6 18M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <button class="translate-btn" id="translate-btn">
+                    翻訳する
+                </button>
+
+                <div class="result-area" id="result-area" style="display:none;">
+                    <div class="result-text" id="result-text"></div>
+                    <div class="result-actions">
+                        <button class="action-btn" id="copy-btn" aria-label="コピー">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                                <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                            </svg>
+                            <span>コピー</span>
+                        </button>
+                        <button class="action-btn" id="speak-btn" aria-label="読み上げ">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+                            </svg>
+                            <span>読み上げ</span>
+                        </button>
+                        <button class="action-btn" id="save-btn" aria-label="保存">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/>
+                            </svg>
+                            <span>保存</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Conversation Tab -->
+        <section id="tab-conversation" class="tab-content">
+            <div class="conversation-container">
+                <div class="conversation-messages" id="conversation-messages">
+                    <div class="conversation-empty">
+                        <p>会話モードへようこそ</p>
+                        <p class="sub">下のボタンを押して話しかけてください</p>
+                    </div>
+                </div>
+                <div class="conversation-controls">
+                    <button class="conv-mic-btn ja-mic" id="ja-mic-btn">
+                        <span class="conv-flag">🇯🇵</span>
+                        <span>日本語で話す</span>
+                    </button>
+                    <button class="conv-mic-btn en-mic" id="en-mic-btn">
+                        <span class="conv-flag">🇺🇸</span>
+                        <span>Speak English</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Phrasebook Tab -->
+        <section id="tab-phrasebook" class="tab-content">
+            <div class="phrasebook-container">
+                <div class="phrase-categories" id="phrase-categories">
+                    <!-- Categories rendered by JS -->
+                </div>
+                <div class="phrase-list" id="phrase-list">
+                    <!-- Phrases rendered by JS -->
+                </div>
+            </div>
+        </section>
+
+        <!-- History Tab -->
+        <section id="tab-history" class="tab-content">
+            <div class="history-container">
+                <div class="history-header">
+                    <h2>翻訳履歴</h2>
+                    <button class="clear-history-btn" id="clear-history-btn">すべて削除</button>
+                </div>
+                <div class="history-list" id="history-list">
+                    <div class="history-empty">
+                        <p>翻訳履歴はまだありません</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Toast notification -->
+        <div class="toast" id="toast"></div>
+
+        <!-- Recording indicator -->
+        <div class="recording-indicator" id="recording-indicator">
+            <div class="recording-pulse"></div>
+            <span>録音中...</span>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
