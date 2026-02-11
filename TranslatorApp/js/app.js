@@ -514,12 +514,30 @@
     }
 
     // --- Auto-detect Conversation Mic ---
+    function handleConvResult(text, fromLang) {
+        autoMicBtn.classList.remove('recording');
+        recordingIndicator.classList.remove('show');
+        activeConvRecording = null;
+
+        const toLang = fromLang === 'ja' ? 'en' : 'ja';
+        translate(text, fromLang, toLang)
+            .then(translated => {
+                addConversationBubble(text, translated, fromLang);
+                speak(translated, toLang);
+            })
+            .catch(() => showToast('翻訳に失敗しました'));
+    }
+
+    function finishConvRecording() {
+        autoMicBtn.classList.remove('recording');
+        recordingIndicator.classList.remove('show');
+        activeConvRecording = null;
+    }
+
     autoMicBtn.addEventListener('click', async () => {
         if (activeConvRecording) {
             stopRecognition();
-            autoMicBtn.classList.remove('recording');
-            recordingIndicator.classList.remove('show');
-            activeConvRecording = null;
+            finishConvRecording();
             return;
         }
 
@@ -530,56 +548,45 @@
         autoMicBtn.classList.add('recording');
         recordingIndicator.classList.add('show');
 
-        // Start with Japanese recognition (handles mixed input well)
+        // Phase 1: Start with Japanese recognition
         const started = startRecognition(
             'ja',
-            async (text, isFinal) => {
+            (text, isFinal) => {
                 if (isFinal && text.trim()) {
                     const detectedLang = detectLanguage(text);
 
-                    // If detected as English, re-recognize with English for better accuracy
-                    if (detectedLang === 'en') {
-                        autoMicBtn.classList.remove('recording');
-                        recordingIndicator.classList.remove('show');
-                        activeConvRecording = null;
+                    if (detectedLang === 'ja') {
+                        // Japanese detected - translate to English
+                        handleConvResult(text, 'ja');
+                    } else {
+                        // No Japanese characters detected - re-recognize with English
+                        stopRecognition();
+                        autoMicBtn.classList.add('recording');
+                        recordingIndicator.classList.add('show');
+                        activeConvRecording = autoMicBtn;
 
-                        try {
-                            const toLang = 'ja';
-                            const translated = await translate(text, 'en', toLang);
-                            addConversationBubble(text, translated, 'en');
-                            speak(translated, toLang);
-                        } catch (err) {
-                            showToast('翻訳に失敗しました');
+                        const retryStarted = startRecognition(
+                            'en',
+                            (enText, enFinal) => {
+                                if (enFinal && enText.trim()) {
+                                    handleConvResult(enText, 'en');
+                                }
+                            },
+                            finishConvRecording
+                        );
+
+                        if (!retryStarted) {
+                            // Fallback: use the Japanese-mode text as-is
+                            handleConvResult(text, 'en');
                         }
-                        return;
-                    }
-
-                    // Japanese detected
-                    autoMicBtn.classList.remove('recording');
-                    recordingIndicator.classList.remove('show');
-                    activeConvRecording = null;
-
-                    try {
-                        const toLang = 'en';
-                        const translated = await translate(text, 'ja', toLang);
-                        addConversationBubble(text, translated, 'ja');
-                        speak(translated, toLang);
-                    } catch (err) {
-                        showToast('翻訳に失敗しました');
                     }
                 }
             },
-            () => {
-                autoMicBtn.classList.remove('recording');
-                recordingIndicator.classList.remove('show');
-                activeConvRecording = null;
-            }
+            finishConvRecording
         );
 
         if (!started) {
-            activeConvRecording = null;
-            autoMicBtn.classList.remove('recording');
-            recordingIndicator.classList.remove('show');
+            finishConvRecording();
         }
     });
 
