@@ -626,18 +626,47 @@
             });
     }
 
-    autoMicBtn.addEventListener('click', () => {
+    // Long-press detection: tap = Japanese start, long-press (500ms) = English start
+    const LONG_PRESS_MS = 500;
+    let pressTimer = null;
+    let longPressed = false;
+
+    function startConversationWith(lang) {
+        unlockSpeech();
+        nextRecogLang = lang;
+        convContinuous = true;
+        startConvListening();
+        showToast(lang === 'ja' ? '日本語から開始' : 'Englishから開始');
+    }
+
+    autoMicBtn.addEventListener('pointerdown', (e) => {
+        if (convContinuous) return;
+        longPressed = false;
+        pressTimer = setTimeout(() => {
+            longPressed = true;
+            autoMicBtn.classList.add('long-pressing');
+        }, LONG_PRESS_MS);
+    });
+
+    autoMicBtn.addEventListener('pointerup', () => {
+        clearTimeout(pressTimer);
+        autoMicBtn.classList.remove('long-pressing');
+
         if (convContinuous) {
             stopConversation();
             return;
         }
 
-        // Unlock speech on user gesture
-        unlockSpeech();
-
-        convContinuous = true;
-        startConvListening();
+        startConversationWith(longPressed ? 'en' : 'ja');
     });
+
+    autoMicBtn.addEventListener('pointerleave', () => {
+        clearTimeout(pressTimer);
+        autoMicBtn.classList.remove('long-pressing');
+    });
+
+    // Prevent context menu on long-press (mobile)
+    autoMicBtn.addEventListener('contextmenu', (e) => e.preventDefault());
 
     // --- Phrasebook ---
     function renderPhrasebook() {

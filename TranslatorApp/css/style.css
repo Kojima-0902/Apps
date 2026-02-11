@@ -599,6 +599,11 @@ body {
     transform: scale(0.97);
 }
 
+.conv-auto-mic-btn.long-pressing .auto-mic-icon {
+    background: linear-gradient(135deg, #4fc3f7, #29b6f6);
+    transition: all 0.4s;
+}
+
 .auto-mic-icon {
     width: 56px;
     height: 56px;
