@@ -609,8 +609,8 @@
 
         const toLang = fromLang === 'ja' ? 'en' : 'ja';
 
-        // Next turn: expect the OTHER language (the listener will reply)
-        nextRecogLang = toLang;
+        // Always use the language selected by toggle for next recognition
+        nextRecogLang = convStartLang;
 
         translate(text, fromLang, toLang)
             .then(translated => {
