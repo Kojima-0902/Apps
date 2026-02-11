@@ -626,47 +626,34 @@
             });
     }
 
-    // Long-press detection: tap = Japanese start, long-press (500ms) = English start
-    const LONG_PRESS_MS = 500;
-    let pressTimer = null;
-    let longPressed = false;
+    // Language toggle: select starting language before tapping mic
+    let convStartLang = 'ja';
+    const langToggle = document.getElementById('conv-lang-toggle');
+    const langOptions = langToggle.querySelectorAll('.conv-lang-option');
 
-    function startConversationWith(lang) {
-        unlockSpeech();
-        nextRecogLang = lang;
-        convContinuous = true;
-        startConvListening();
-        showToast(lang === 'ja' ? '日本語から開始' : 'Englishから開始');
-    }
+    langToggle.addEventListener('click', (e) => {
+        const option = e.target.closest('.conv-lang-option');
+        if (!option || convContinuous) return;
 
-    autoMicBtn.addEventListener('pointerdown', (e) => {
-        if (convContinuous) return;
-        longPressed = false;
-        pressTimer = setTimeout(() => {
-            longPressed = true;
-            autoMicBtn.classList.add('long-pressing');
-        }, LONG_PRESS_MS);
+        const lang = option.dataset.lang;
+        convStartLang = lang;
+
+        langOptions.forEach(o => o.classList.remove('active'));
+        option.classList.add('active');
+        langToggle.classList.toggle('en-active', lang === 'en');
     });
 
-    autoMicBtn.addEventListener('pointerup', () => {
-        clearTimeout(pressTimer);
-        autoMicBtn.classList.remove('long-pressing');
-
+    autoMicBtn.addEventListener('click', () => {
         if (convContinuous) {
             stopConversation();
             return;
         }
 
-        startConversationWith(longPressed ? 'en' : 'ja');
+        unlockSpeech();
+        nextRecogLang = convStartLang;
+        convContinuous = true;
+        startConvListening();
     });
-
-    autoMicBtn.addEventListener('pointerleave', () => {
-        clearTimeout(pressTimer);
-        autoMicBtn.classList.remove('long-pressing');
-    });
-
-    // Prevent context menu on long-press (mobile)
-    autoMicBtn.addEventListener('contextmenu', (e) => e.preventDefault());
 
     // --- Phrasebook ---
     function renderPhrasebook() {
