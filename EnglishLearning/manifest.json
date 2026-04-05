@@ -2,7 +2,7 @@
   "name": "英語学習アプリ",
   "short_name": "英語学習",
   "description": "A1-A2レベルの英語会話・スピーキング練習アプリ",
-  "start_url": "/EnglishLearning/",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#0a0a18",
   "theme_color": "#0a0a18",

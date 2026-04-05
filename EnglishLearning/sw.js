@@ -1,11 +1,11 @@
 const CACHE = 'english-app-v1';
 const ASSETS = [
-  '/EnglishLearning/',
-  '/EnglishLearning/index.html',
-  '/EnglishLearning/css/style.css',
-  '/EnglishLearning/js/data.js',
-  '/EnglishLearning/js/app.js',
-  '/EnglishLearning/manifest.json',
+  './',
+  './index.html',
+  './css/style.css',
+  './js/data.js',
+  './js/app.js',
+  './manifest.json',
 ];
 
 self.addEventListener('install', e => {

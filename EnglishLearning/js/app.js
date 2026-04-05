@@ -564,6 +564,6 @@ document.addEventListener('DOMContentLoaded', () => {
 // Register service worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/EnglishLearning/sw.js').catch(() => {});
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
   });
 }
