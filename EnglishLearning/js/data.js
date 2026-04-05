@@ -9,6 +9,15 @@ const CATEGORIES = [
   { id: 'travel', label: '旅行', icon: '✈️', color: '#8b5cf6' },
 ];
 
+const BIZ_CATEGORIES = [
+  { id: 'biz_meeting', label: '会議', icon: '🤝', color: '#00d4ff' },
+  { id: 'biz_presentation', label: 'プレゼン', icon: '📊', color: '#7c3aed' },
+  { id: 'biz_email', label: 'メール', icon: '📧', color: '#10b981' },
+  { id: 'biz_negotiation', label: '交渉', icon: '💼', color: '#f59e0b' },
+  { id: 'biz_smalltalk', label: '雑談', icon: '☕', color: '#ef4444' },
+  { id: 'biz_call', label: '電話・Web会議', icon: '💻', color: '#8b5cf6' },
+];
+
 const PHRASES = {
   greetings: [
     { en: 'Hello!', ja: 'こんにちは！', example: 'Hello! How are you?' },
@@ -151,26 +160,221 @@ const DIALOGUES = [
   },
 ];
 
-// Progress tracking keys
+const BIZ_PHRASES = {
+  biz_meeting: [
+    { en: "Shall we get started?", ja: "始めましょうか？", example: "It's 2 o'clock. Shall we get started?" },
+    { en: "Let's go over the agenda.", ja: "議題を確認しましょう。", example: "Before we begin, let's go over the agenda." },
+    { en: "Could you elaborate on that?", ja: "もう少し詳しく説明していただけますか？", example: "That's interesting. Could you elaborate on that?" },
+    { en: "I'd like to add to that point.", ja: "その点について補足したいのですが。", example: "I'd like to add to that point — we also need to consider the budget." },
+    { en: "Let's table that for now.", ja: "それはひとまず保留にしましょう。", example: "We're running out of time. Let's table that for now." },
+    { en: "Can we take a five-minute break?", ja: "5分休憩してもいいですか？", example: "We've been at this for an hour. Can we take a five-minute break?" },
+    { en: "To summarize what we've discussed...", ja: "これまで話し合ったことをまとめると…", example: "To summarize what we've discussed, we agreed on three key points." },
+    { en: "Who's responsible for this action item?", ja: "このアクションアイテムの担当者は誰ですか？", example: "Who's responsible for this action item? I'll note it in the minutes." },
+    { en: "Let's schedule a follow-up meeting.", ja: "フォローアップの会議を設定しましょう。", example: "Good progress today. Let's schedule a follow-up meeting for next week." },
+    { en: "Does anyone have any objections?", ja: "反対意見はありますか？", example: "Before we finalize, does anyone have any objections?" },
+  ],
+  biz_presentation: [
+    { en: "Thank you for having me today.", ja: "本日はお招きいただきありがとうございます。", example: "Good morning everyone. Thank you for having me today." },
+    { en: "I'd like to walk you through...", ja: "…についてご説明したいと思います。", example: "I'd like to walk you through our Q3 results." },
+    { en: "As you can see from this slide...", ja: "このスライドをご覧のとおり…", example: "As you can see from this slide, sales grew by 20%." },
+    { en: "Let me highlight the key takeaways.", ja: "重要なポイントを強調させていただきます。", example: "Before I finish, let me highlight the key takeaways." },
+    { en: "I'll take questions at the end.", ja: "質問は最後に受け付けます。", example: "Please hold your questions — I'll take questions at the end." },
+    { en: "That's a great question.", ja: "素晴らしい質問ですね。", example: "That's a great question. Let me address that directly." },
+    { en: "To put it simply...", ja: "簡単に言うと…", example: "To put it simply, our goal is to double revenue in two years." },
+    { en: "The data clearly shows that...", ja: "データは明確に…を示しています。", example: "The data clearly shows that customer satisfaction is improving." },
+    { en: "In conclusion...", ja: "結論として…", example: "In conclusion, I'd like to recommend we move forward with option B." },
+    { en: "Please feel free to reach out.", ja: "お気軽にご連絡ください。", example: "If you have further questions, please feel free to reach out." },
+  ],
+  biz_email: [
+    { en: "I hope this email finds you well.", ja: "お元気のこととお慶び申し上げます。", example: "Dear Mr. Smith, I hope this email finds you well." },
+    { en: "I'm writing to follow up on...", ja: "…についてフォローアップのためご連絡しています。", example: "I'm writing to follow up on our meeting last Tuesday." },
+    { en: "Please find the attached document.", ja: "添付書類をご確認ください。", example: "Please find the attached document for your review." },
+    { en: "Could you please get back to me by...?", ja: "…までにご返信いただけますか？", example: "Could you please get back to me by Friday?" },
+    { en: "I apologize for the late reply.", ja: "返信が遅くなり申し訳ございません。", example: "I apologize for the late reply — I was traveling last week." },
+    { en: "Thank you for your prompt response.", ja: "迅速なご返信ありがとうございます。", example: "Thank you for your prompt response to my inquiry." },
+    { en: "Let me know if you have any questions.", ja: "ご不明な点があればお知らせください。", example: "Let me know if you have any questions about the proposal." },
+    { en: "I look forward to hearing from you.", ja: "ご連絡をお待ちしております。", example: "Best regards, and I look forward to hearing from you." },
+    { en: "As per our previous discussion...", ja: "先日のご議論の通り…", example: "As per our previous discussion, I've revised the timeline." },
+    { en: "Please advise at your earliest convenience.", ja: "お手すきの際にご指示いただけますか。", example: "We need a decision by end of week. Please advise at your earliest convenience." },
+  ],
+  biz_negotiation: [
+    { en: "We'd like to propose...", ja: "…を提案したいと思います。", example: "We'd like to propose a 10% discount for bulk orders." },
+    { en: "That's beyond our budget.", ja: "それは予算を超えています。", example: "I appreciate the offer, but that's beyond our budget." },
+    { en: "Is there any flexibility on the price?", ja: "価格について融通はありますか？", example: "Is there any flexibility on the price if we commit to a long-term contract?" },
+    { en: "Can we meet somewhere in the middle?", ja: "お互いに歩み寄れませんか？", example: "Both sides have valid points. Can we meet somewhere in the middle?" },
+    { en: "That sounds reasonable.", ja: "それは理にかなっていると思います。", example: "A 5% reduction — that sounds reasonable to me." },
+    { en: "I need to consult with my team.", ja: "チームと相談する必要があります。", example: "This is a significant decision. I need to consult with my team first." },
+    { en: "What are your terms?", ja: "条件はどのようなものですか？", example: "We're interested in moving forward. What are your terms?" },
+    { en: "We can offer a volume discount.", ja: "数量割引を提供できます。", example: "For orders over 100 units, we can offer a volume discount." },
+    { en: "Let's draw up a formal agreement.", ja: "正式な契約書を作成しましょう。", example: "I'm glad we reached an agreement. Let's draw up a formal agreement." },
+    { en: "We have a deal.", ja: "合意しました。", example: "After reviewing the terms — we have a deal!" },
+  ],
+  biz_smalltalk: [
+    { en: "How was your weekend?", ja: "週末はいかがでしたか？", example: "Good Monday morning! How was your weekend?" },
+    { en: "Did you catch the game last night?", ja: "昨夜の試合見ましたか？", example: "Did you catch the game last night? It was incredible!" },
+    { en: "How are things going on your end?", ja: "そちらの状況はいかがですか？", example: "Hi Sarah! How are things going on your end?" },
+    { en: "I've been swamped lately.", ja: "最近とても忙しくしていました。", example: "Sorry I haven't been in touch — I've been swamped lately." },
+    { en: "Any plans for the holidays?", ja: "連休の予定はありますか？", example: "The Golden Week is coming up. Any plans for the holidays?" },
+    { en: "That went better than expected.", ja: "予想より上手くいきました。", example: "That went better than expected! The client seemed really happy." },
+    { en: "Between you and me...", ja: "ここだけの話ですが…", example: "Between you and me, I think the new strategy will really work." },
+    { en: "I couldn't agree more.", ja: "まったくその通りですね。", example: "Remote work really boosts productivity — I couldn't agree more." },
+  ],
+  biz_call: [
+    { en: "Can you hear me clearly?", ja: "はっきり聞こえますか？", example: "Before we start, can you hear me clearly?" },
+    { en: "I think you're on mute.", ja: "ミュートになっていると思います。", example: "We can't hear you — I think you're on mute." },
+    { en: "Could you repeat that, please?", ja: "もう一度おっしゃっていただけますか？", example: "Sorry, the line was breaking up. Could you repeat that, please?" },
+    { en: "Let me share my screen.", ja: "画面を共有します。", example: "To show you the data, let me share my screen." },
+    { en: "We're experiencing some technical difficulties.", ja: "技術的な問題が発生しています。", example: "We're experiencing some technical difficulties. Please bear with us." },
+    { en: "Let's get everyone on the call.", ja: "全員を通話に参加させましょう。", example: "I'll send the link now. Let's get everyone on the call." },
+    { en: "I'll send the recording afterward.", ja: "後で録画を送ります。", example: "For those who can't attend, I'll send the recording afterward." },
+    { en: "Are there any questions before we wrap up?", ja: "終わる前に質問はありますか？", example: "We're almost out of time. Are there any questions before we wrap up?" },
+  ],
+};
+
+const BIZ_DIALOGUES = [
+  {
+    id: 'biz_kickoff',
+    title: 'プロジェクト会議',
+    level: 'B1',
+    icon: '🤝',
+    isBusiness: true,
+    lines: [
+      { speaker: 'Manager', en: "Good morning everyone. Shall we get started?", ja: "おはようございます。始めましょうか？" },
+      { speaker: 'You', en: "Good morning. Yes, I'm ready.", ja: "おはようございます。はい、準備できています。" },
+      { speaker: 'Manager', en: "Great. Let's go over the agenda for today's kickoff meeting.", ja: "では、本日のキックオフ会議の議題を確認しましょう。" },
+      { speaker: 'You', en: "I'd like to walk you through the project timeline first.", ja: "まずプロジェクトのスケジュールをご説明したいと思います。" },
+      { speaker: 'Manager', en: "That sounds good. Could you elaborate on the delivery dates?", ja: "良いですね。納期についてもう少し詳しく教えていただけますか？" },
+      { speaker: 'You', en: "Of course. The data clearly shows that we can deliver Phase 1 by end of March.", ja: "もちろんです。データによると、3月末までにフェーズ1を納品できます。" },
+      { speaker: 'Manager', en: "Does anyone have any objections?", ja: "反対意見はありますか？" },
+      { speaker: 'You', en: "No objections from my side. Let's schedule a follow-up meeting next week.", ja: "私の方からは異論ありません。来週フォローアップ会議を設定しましょう。" },
+    ],
+  },
+  {
+    id: 'biz_negotiation',
+    title: '価格交渉',
+    level: 'B1',
+    icon: '💼',
+    isBusiness: true,
+    lines: [
+      { speaker: 'Client', en: "Thank you for the proposal. However, that's beyond our budget.", ja: "提案書をありがとうございます。しかし、それは予算を超えています。" },
+      { speaker: 'You', en: "I understand. Is there any flexibility on the scope?", ja: "承知しました。スコープについて融通はありますか？" },
+      { speaker: 'Client', en: "We could reduce Phase 3 features. Can we meet somewhere in the middle?", ja: "フェーズ3の機能を削減することはできます。お互いに歩み寄れませんか？" },
+      { speaker: 'You', en: "We can offer a volume discount if you commit to a 12-month contract.", ja: "12ヶ月契約をコミットしていただければ、数量割引を提供できます。" },
+      { speaker: 'Client', en: "That sounds reasonable. I need to consult with my team first.", ja: "それは理にかなっていますね。まずチームと相談する必要があります。" },
+      { speaker: 'You', en: "Of course. Please feel free to reach out by Friday.", ja: "もちろんです。金曜日までにお気軽にご連絡ください。" },
+      { speaker: 'Client', en: "We have a deal. Let's draw up a formal agreement.", ja: "合意しました。正式な契約書を作成しましょう。" },
+    ],
+  },
+  {
+    id: 'biz_presentation',
+    title: 'プレゼン発表',
+    level: 'B2',
+    icon: '📊',
+    isBusiness: true,
+    lines: [
+      { speaker: 'You', en: "Good afternoon. Thank you for having me today.", ja: "こんにちは。本日はお招きいただきありがとうございます。" },
+      { speaker: 'You', en: "I'd like to walk you through our Q3 performance and future strategy.", ja: "第3四半期の業績と今後の戦略についてご説明したいと思います。" },
+      { speaker: 'You', en: "As you can see from this slide, revenue grew by 25% year over year.", ja: "このスライドをご覧のとおり、売上は前年比25%増加しました。" },
+      { speaker: 'Audience', en: "Could you elaborate on the growth drivers?", ja: "成長要因についてもう少し詳しく説明していただけますか？" },
+      { speaker: 'You', en: "That's a great question. To put it simply, three factors drove the growth.", ja: "素晴らしい質問ですね。簡単に言うと、3つの要因が成長を牽引しました。" },
+      { speaker: 'You', en: "In conclusion, I'd like to recommend we invest in digital channels.", ja: "結論として、デジタルチャネルへの投資を推奨したいと思います。" },
+      { speaker: 'Audience', en: "Excellent presentation! Are there any risks we should be aware of?", ja: "素晴らしいプレゼンでした！注意すべきリスクはありますか？" },
+      { speaker: 'You', en: "Let me highlight the key risks. I'll take further questions at the end.", ja: "主なリスクを強調させていただきます。詳細な質問は最後に受け付けます。" },
+    ],
+  },
+];
+
+// ---- Storage Keys ----
 const PROGRESS_KEY = 'english_app_progress';
 const FAVORITES_KEY = 'english_app_favorites';
+const SRS_KEY = 'english_app_srs';
+const STAMPS_KEY = 'english_app_stamps';
+
+// SRS levels: 0=New, 1=Learning(1d), 2=Young(3d), 3=Mature(7d), 4=Mastered(21d)
+const SRS_INTERVALS = [0, 1, 3, 7, 21];
 
 function loadProgress() {
-  try {
-    return JSON.parse(localStorage.getItem(PROGRESS_KEY)) || {};
-  } catch { return {}; }
+  try { return JSON.parse(localStorage.getItem(PROGRESS_KEY)) || {}; } catch { return {}; }
 }
-
-function saveProgress(data) {
-  localStorage.setItem(PROGRESS_KEY, JSON.stringify(data));
-}
+function saveProgress(data) { localStorage.setItem(PROGRESS_KEY, JSON.stringify(data)); }
 
 function loadFavorites() {
-  try {
-    return JSON.parse(localStorage.getItem(FAVORITES_KEY)) || [];
-  } catch { return []; }
+  try { return JSON.parse(localStorage.getItem(FAVORITES_KEY)) || []; } catch { return []; }
+}
+function saveFavorites(data) { localStorage.setItem(FAVORITES_KEY, JSON.stringify(data)); }
+
+function loadSRS() {
+  try { return JSON.parse(localStorage.getItem(SRS_KEY)) || {}; } catch { return {}; }
+}
+function saveSRS(data) { localStorage.setItem(SRS_KEY, JSON.stringify(data)); }
+
+function loadStamps() {
+  try { return JSON.parse(localStorage.getItem(STAMPS_KEY)) || []; } catch { return []; }
+}
+function saveStamps(data) { localStorage.setItem(STAMPS_KEY, JSON.stringify(data)); }
+
+function todayStr() {
+  return new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 }
 
-function saveFavorites(data) {
-  localStorage.setItem(FAVORITES_KEY, JSON.stringify(data));
+function stampToday() {
+  const stamps = loadStamps();
+  const today = todayStr();
+  if (!stamps.includes(today)) {
+    stamps.push(today);
+    saveStamps(stamps);
+  }
+}
+
+function getStreak() {
+  const stamps = loadStamps().sort();
+  if (stamps.length === 0) return 0;
+  let streak = 0;
+  const today = new Date();
+  for (let i = 0; i < 365; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const s = d.toISOString().slice(0, 10);
+    if (stamps.includes(s)) { streak++; } else { break; }
+  }
+  return streak;
+}
+
+function getSRSCard(key) {
+  const srs = loadSRS();
+  return srs[key] || { level: 0, nextReview: todayStr() };
+}
+
+function updateSRSCard(key, correct) {
+  const srs = loadSRS();
+  const card = srs[key] || { level: 0, nextReview: todayStr() };
+  if (correct) {
+    card.level = Math.min(4, card.level + 1);
+  } else {
+    card.level = Math.max(1, card.level - 1);
+  }
+  const days = SRS_INTERVALS[card.level];
+  const next = new Date();
+  next.setDate(next.getDate() + days);
+  card.nextReview = next.toISOString().slice(0, 10);
+  srs[key] = card;
+  saveSRS(srs);
+  return card;
+}
+
+function getDueCards() {
+  const srs = loadSRS();
+  const today = todayStr();
+  const allPhrases = [];
+  [...CATEGORIES, ...BIZ_CATEGORIES].forEach(cat => {
+    const phrases = (PHRASES[cat.id] || BIZ_PHRASES[cat.id] || []);
+    phrases.forEach((p, i) => {
+      const key = `${cat.id}_${i}`;
+      const card = srs[key] || { level: 0, nextReview: today };
+      if (card.nextReview <= today) {
+        allPhrases.push({ key, phrase: p, card, catId: cat.id });
+      }
+    });
+  });
+  return allPhrases.slice(0, 20); // Max 20 per session
 }
