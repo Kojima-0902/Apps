@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0a0a18">
+  <title>English Learning App</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.svg">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-title">英語学習アプリ</div>
+    <div class="header-subtitle">A1-A2 Conversation & Speaking Practice</div>
+  </header>
+
+  <!-- Install Banner -->
+  <div id="install-banner" class="install-banner hidden">
+    <p>ホーム画面に追加してオフラインでも使えます</p>
+    <button id="install-btn" class="install-btn">追加</button>
+    <button id="install-dismiss-btn" class="install-dismiss">✕</button>
+  </div>
+
+  <!-- ============ CONVERSATION TAB ============ -->
+  <section id="tab-conversation" class="tab-content active">
+    <div class="scroll-area">
+
+      <!-- List View -->
+      <div id="dialogue-list-view">
+        <div class="section-heading">会話シナリオを選択</div>
+        <div id="dialogue-list"></div>
+      </div>
+
+      <!-- Detail View -->
+      <div id="dialogue-detail-view" class="hidden">
+        <div class="dialogue-detail-header">
+          <button id="dl-back-btn" class="back-btn">← 戻る</button>
+          <div id="dialogue-detail-title"></div>
+        </div>
+
+        <div id="dialogue-lines" class="dialogue-lines"></div>
+
+        <div id="pronunciation-result" class="pronunciation-result hidden"></div>
+
+        <div class="dialogue-controls">
+          <div class="dialogue-ctrl-row">
+            <button id="dl-prev-btn" class="btn-secondary">← 前へ</button>
+            <span id="dl-progress">1 / 6</span>
+            <button id="dl-next-btn" class="btn-primary">次へ →</button>
+          </div>
+          <div class="dialogue-ctrl-row">
+            <button id="dl-speak-current-btn" class="btn-secondary" style="flex:1">🔊 聞く</button>
+            <button id="dl-shadow-btn" class="btn-shadow">🗣️ シャドーイング</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ PHRASES TAB ============ -->
+  <section id="tab-phrases" class="tab-content">
+    <div class="scroll-area">
+      <div class="section-heading">フレーズ集</div>
+      <div class="cat-scroll">
+        <div id="category-tabs" class="category-tabs"></div>
+      </div>
+      <div id="phrase-list"></div>
+    </div>
+  </section>
+
+  <!-- ============ SPEAKING TAB ============ -->
+  <section id="tab-speaking" class="tab-content">
+    <div class="scroll-area">
+      <div class="section-heading">スピーキング練習</div>
+
+      <div class="sp-category-wrap">
+        <label>カテゴリーを選択</label>
+        <select id="sp-category-select" class="sp-select"></select>
+      </div>
+
+      <div class="speaking-card">
+        <div id="sp-counter" class="sp-counter">1 / 10</div>
+        <div id="sp-phrase-en" class="sp-phrase-en">Hello!</div>
+        <div id="sp-phrase-ja" class="sp-phrase-ja">こんにちは！</div>
+        <div id="sp-phrase-example" class="sp-phrase-example">Hello! How are you?</div>
+      </div>
+
+      <div id="sp-result" class="sp-result-box hidden"></div>
+
+      <div class="sp-controls">
+        <button id="sp-listen-btn" class="btn-secondary">🔊 発音を聞く</button>
+        <button id="sp-record-btn" class="btn-shadow">🎙️ 発音してみる</button>
+      </div>
+
+      <div class="sp-nav">
+        <button id="sp-prev-btn" class="btn-secondary">← 前のフレーズ</button>
+        <button id="sp-next-btn" class="btn-secondary">次のフレーズ →</button>
+      </div>
+
+      <div class="sp-tips">
+        <h3>💡 スピーキング練習のコツ</h3>
+        <ul>
+          <li>まず「発音を聞く」でネイティブの発音を確認しましょう</li>
+          <li>何度も聞いて口の動きをイメージしてみましょう</li>
+          <li>「発音してみる」をタップして実際に声に出してみましょう</li>
+          <li>スコアより「声に出すこと」を大切に！</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PROGRESS TAB ============ -->
+  <section id="tab-progress" class="tab-content">
+    <div class="scroll-area">
+      <div class="section-heading">学習進捗</div>
+
+      <div class="progress-stats">
+        <div class="stat-card">
+          <div id="prog-dialogues" class="stat-value">0/0</div>
+          <div class="stat-label">会話完了</div>
+        </div>
+        <div class="stat-card">
+          <div id="prog-phrases" class="stat-value">0/0</div>
+          <div class="stat-label">練習済みフレーズ</div>
+        </div>
+        <div class="stat-card">
+          <div id="prog-favorites" class="stat-value">0</div>
+          <div class="stat-label">お気に入り</div>
+        </div>
+      </div>
+
+      <div class="progress-bar-wrap">
+        <p>会話シナリオ 完了率</p>
+        <div class="progress-bar">
+          <div id="prog-bar-fill" class="progress-bar-fill" style="width:0%"></div>
+        </div>
+        <div id="prog-bar-label" class="progress-bar-label">0%</div>
+      </div>
+
+      <div class="prog-section">
+        <h3>完了した会話シナリオ</h3>
+        <div id="prog-completed-list"></div>
+      </div>
+
+      <div class="prog-section">
+        <h3>お気に入りのフレーズ</h3>
+        <div id="prog-fav-list"></div>
+      </div>
+
+      <button id="prog-reset-btn" class="btn-danger">学習データをリセット</button>
+    </div>
+  </section>
+
+  <!-- Tab Navigation -->
+  <nav class="tab-nav">
+    <button class="tab-btn active" data-tab="conversation">
+      <span class="tab-icon">💬</span>
+      <span>会話</span>
+    </button>
+    <button class="tab-btn" data-tab="phrases">
+      <span class="tab-icon">📖</span>
+      <span>フレーズ</span>
+    </button>
+    <button class="tab-btn" data-tab="speaking">
+      <span class="tab-icon">🎙️</span>
+      <span>スピーキング</span>
+    </button>
+    <button class="tab-btn" data-tab="progress">
+      <span class="tab-icon">📊</span>
+      <span>進捗</span>
+    </button>
+  </nav>
+
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

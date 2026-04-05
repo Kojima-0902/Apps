@@ -1,0 +1,25 @@
+{
+  "name": "英語学習アプリ",
+  "short_name": "英語学習",
+  "description": "A1-A2レベルの英語会話・スピーキング練習アプリ",
+  "start_url": "/EnglishLearning/",
+  "display": "standalone",
+  "background_color": "#0a0a18",
+  "theme_color": "#0a0a18",
+  "orientation": "portrait",
+  "lang": "ja",
+  "icons": [
+    {
+      "src": "icons/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
