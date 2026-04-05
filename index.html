@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0a0a18">
+  <title>My Apps</title>
+  <style>
+    :root {
+      --bg: #0a0a18;
+      --card: #181830;
+      --border: #2a2a50;
+      --accent: #00d4ff;
+      --accent2: #7c3aed;
+      --text: #e2e8f0;
+      --text2: #94a3b8;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
+      padding: 24px 16px 40px;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .header h1 {
+      font-size: 1.6rem;
+      font-weight: 800;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 6px;
+    }
+    .header p { font-size: 0.85rem; color: var(--text2); }
+    .apps { display: flex; flex-direction: column; gap: 14px; max-width: 420px; margin: 0 auto; }
+    .app-card {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px;
+      text-decoration: none;
+      color: inherit;
+      transition: border-color 0.2s, transform 0.15s;
+    }
+    .app-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .app-icon { font-size: 2.4rem; flex-shrink: 0; }
+    .app-info { flex: 1; }
+    .app-name { font-size: 1rem; font-weight: 700; margin-bottom: 4px; }
+    .app-desc { font-size: 0.78rem; color: var(--text2); }
+    .arrow { color: var(--text2); font-size: 1.1rem; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>My Apps</h1>
+    <p>スマホアプリ一覧</p>
+  </div>
+  <div class="apps">
+    <a href="EnglishLearning/" class="app-card">
+      <div class="app-icon">💬</div>
+      <div class="app-info">
+        <div class="app-name">英語学習アプリ</div>
+        <div class="app-desc">A1-A2 会話・スピーキング練習</div>
+      </div>
+      <div class="arrow">›</div>
+    </a>
+    <a href="TranslatorApp/" class="app-card">
+      <div class="app-icon">🔄</div>
+      <div class="app-info">
+        <div class="app-name">AI翻訳アプリ</div>
+        <div class="app-desc">日本語 ⇄ 英語 リアルタイム翻訳</div>
+      </div>
+      <div class="arrow">›</div>
+    </a>
+    <a href="GymTracker-PWA/" class="app-card">
+      <div class="app-icon">💪</div>
+      <div class="app-info">
+        <div class="app-name">ジムトラッカー</div>
+        <div class="app-desc">トレーニング・体重記録</div>
+      </div>
+      <div class="arrow">›</div>
+    </a>
+  </div>
+</body>
+</html>
