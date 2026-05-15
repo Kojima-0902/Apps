@@ -104,6 +104,22 @@ const Store = {
     return colors[group] || '#888';
   },
 
+  getLocalStorageBytes() {
+    return ['workouts', 'bodyweights'].reduce((sum, key) => {
+      const val = localStorage.getItem(key);
+      return sum + (val ? val.length * 2 : 0);
+    }, 0);
+  },
+
+  deleteOldWorkouts(months) {
+    const cutoff = new Date();
+    cutoff.setMonth(cutoff.getMonth() - months);
+    const before = this.getWorkouts().length;
+    const kept = this.getWorkouts().filter(w => new Date(w.date) >= cutoff);
+    this._set('workouts', kept);
+    return before - kept.length;
+  },
+
   // Export all data as JSON
   exportData() {
     return JSON.stringify({
