@@ -1,38 +1,33 @@
 'use strict';
 
-// ---- State ----
-let currentTab = 'home';
-let currentDialogue = null;
-let currentDialogueLine = 0;
-let currentCategory = 'greetings';
-let currentPhraseType = 'general'; // general | business
-let convMode = 'general'; // general | business
-let phraseMode = 'browse'; // browse | quiz | speaking
+// ====== State ======
+let currentTab = 'talk';
 let progress = loadProgress();
 let favorites = loadFavorites();
-let srsData = loadSRS();
+let currentPhraseType = 'general';
+let currentCategory = 'greetings';
 let recognition = null;
+let todaysRoleplay = null;
 
-// Daily goal config
-const DAILY_GOAL_PHRASES = 5;
-const DAILY_GOAL_DIALOGUES = 1;
-
-// ---- Speech Synthesis ----
-function speak(text, rate = 0.85, onEnd) {
-  if (!('speechSynthesis' in window)) { showToast('TTS非対応のブラウザです'); return; }
+// ====== Speech Synthesis (TTS) ======
+function speak(text, rate = 0.9, onEnd) {
+  if (!('speechSynthesis' in window)) { if (onEnd) onEnd(); return; }
   window.speechSynthesis.cancel();
-  const utter = new SpeechSynthesisUtterance(text);
-  utter.lang = 'en-US';
-  utter.rate = rate;
-  utter.pitch = 1;
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'en-US';
+  u.rate = rate;
+  u.pitch = 1;
   const voices = window.speechSynthesis.getVoices();
-  const enVoice = voices.find(v => v.lang.startsWith('en') && !v.name.includes('Google')) || voices.find(v => v.lang.startsWith('en'));
-  if (enVoice) utter.voice = enVoice;
-  utter.onend = () => { if (onEnd) onEnd(); };
-  window.speechSynthesis.speak(utter);
+  const v = voices.find(x => x.lang.startsWith('en') && /female|samantha|karen|moira|tessa|zira/i.test(x.name))
+         || voices.find(x => x.lang.startsWith('en') && !x.name.includes('Google'))
+         || voices.find(x => x.lang.startsWith('en'));
+  if (v) u.voice = v;
+  u.onend = () => { if (onEnd) onEnd(); };
+  u.onerror = () => { if (onEnd) onEnd(); };
+  window.speechSynthesis.speak(u);
 }
 
-// ---- Speech Recognition ----
+// ====== Speech Recognition (STT) ======
 function initRecognition() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) return null;
@@ -40,415 +35,344 @@ function initRecognition() {
   r.lang = 'en-US';
   r.continuous = false;
   r.interimResults = true;
+  r.maxAlternatives = 3;
   return r;
 }
 
-// ---- Toast ----
-function showToast(msg, duration = 2500) {
+// ====== Matching ======
+function normalize(s) {
+  return s.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
+}
+function bestScore(spoken, targets) {
+  const sw = normalize(spoken).split(' ').filter(Boolean);
+  let best = 0;
+  targets.forEach(t => {
+    const tw = normalize(t).split(' ').filter(Boolean);
+    if (tw.length === 0) return;
+    let m = 0;
+    const pool = [...sw];
+    tw.forEach(w => {
+      const idx = pool.indexOf(w);
+      if (idx >= 0) { m++; pool.splice(idx, 1); }
+    });
+    const score = Math.round((m / tw.length) * 100);
+    if (score > best) best = score;
+  });
+  return best;
+}
+function highlightWords(spoken, target) {
+  const sw = normalize(spoken).split(' ').filter(Boolean);
+  const tw = target.split(' ');
+  const swPool = [...sw];
+  return tw.map(word => {
+    const n = normalize(word);
+    const idx = swPool.indexOf(n);
+    if (n && idx >= 0) { swPool.splice(idx, 1); return `<span class="w-ok">${word}</span>`; }
+    return `<span class="w-miss">${word}</span>`;
+  }).join(' ');
+}
+
+// ====== Toast ======
+function showToast(msg, dur = 2400) {
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), duration);
+  setTimeout(() => t.classList.remove('show'), dur);
 }
 
-// ---- Score pronunciation ----
-function scoreMatch(target, spoken) {
-  const n = s => s.toLowerCase().replace(/[^a-z\s]/g, '').trim();
-  const tw = n(target).split(/\s+/);
-  const sw = n(spoken).split(/\s+/);
-  let m = 0;
-  tw.forEach(w => { if (sw.includes(w)) m++; });
-  return Math.round((m / tw.length) * 100);
-}
-
-// ========================================
-// TAB NAVIGATION
-// ========================================
+// ====== Tabs ======
 function initTabs() {
-  document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.addEventListener('click', () => switchTab(b.dataset.tab));
   });
 }
-
 function switchTab(tab) {
   currentTab = tab;
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   document.querySelectorAll('.tab-content').forEach(s => s.classList.toggle('active', s.id === `tab-${tab}`));
-  if (tab === 'home') renderHome();
+  if (tab === 'talk') renderTalk();
   if (tab === 'progress') renderProgress();
+  if (tab === 'phrases') renderPhrasesTab();
 }
 
-// ========================================
-// HOME TAB
-// ========================================
-function renderHome() {
-  renderStreak();
-  renderStampCard();
-  renderDailyGoal();
-  renderSRSBanner();
-  renderMilestones();
-}
+// ====== TALK TAB ======
+function renderTalk() {
+  const h = new Date().getHours();
+  const greet = h < 11 ? 'おはよう、話そう' : h < 17 ? 'さあ、話そう' : 'お疲れさま、話そう';
+  document.getElementById('hero-greeting').textContent = greet;
 
-function renderStreak() {
+  const cando = loadCanDo();
+  const next = ROLEPLAYS.find(r => !cando[r.id]) || ROLEPLAYS[Math.floor(Math.random() * ROLEPLAYS.length)];
+  todaysRoleplay = next;
+  document.getElementById('hero-sub').textContent = `${next.icon} ${next.title} · 約3分`;
+
+  const scenes = getScenesCount();
   const streak = getStreak();
-  document.getElementById('streak-count').textContent = streak;
-  const stamps = loadStamps().sort();
-  let best = 0, cur = 0;
-  let prev = null;
-  stamps.forEach(s => {
-    if (prev) {
-      const diff = (new Date(s) - new Date(prev)) / 86400000;
-      cur = diff === 1 ? cur + 1 : 1;
-    } else { cur = 1; }
-    if (cur > best) best = cur;
-    prev = s;
-  });
-  document.getElementById('streak-best').textContent = best;
-}
+  document.getElementById('hero-mini-stat').textContent =
+    scenes > 0 ? `これまで ${scenes} 回の会話を達成${streak > 1 ? ` · ${streak}日連続` : ''}` : '最初の一歩を踏み出そう！';
 
-function renderStampCard() {
-  const stamps = loadStamps();
-  const row = document.getElementById('stamp-row');
-  const days = ['月', '火', '水', '木', '金', '土', '日'];
-  const today = new Date();
-  // Show Mon-Sun of current week
-  const dow = (today.getDay() + 6) % 7; // 0=Mon
-  row.innerHTML = '';
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - dow + i);
-    const s = d.toISOString().slice(0, 10);
-    const stamped = stamps.includes(s);
-    const isToday = s === todayStr();
-    const el = document.createElement('div');
-    el.className = `stamp-day ${stamped ? 'stamped' : ''} ${isToday ? 'today' : ''}`;
-    el.innerHTML = `<div class="stamp-label">${days[i]}</div><div class="stamp-circle">${stamped ? '★' : ''}</div>`;
-    row.appendChild(el);
-  }
-}
-
-function renderDailyGoal() {
-  const today = todayStr();
-  const practicedToday = Object.keys(progress).filter(k => {
-    const v = progress[k];
-    return typeof v === 'number' && new Date(v).toISOString().slice(0, 10) === today && k.startsWith('phrase_');
-  }).length;
-  const dialoguesToday = Object.keys(progress).filter(k => {
-    const v = progress[k];
-    return typeof v === 'number' && new Date(v).toISOString().slice(0, 10) === today && k.startsWith('dialogue_');
-  }).length;
-
-  const p1 = Math.min(practicedToday, DAILY_GOAL_PHRASES);
-  const p2 = Math.min(dialoguesToday, DAILY_GOAL_DIALOGUES);
-  const total = DAILY_GOAL_PHRASES + DAILY_GOAL_DIALOGUES;
-  const done = p1 + p2;
-  const pct = Math.round((done / total) * 100);
-
-  document.getElementById('goal-pct').textContent = pct + '%';
-  document.getElementById('goal-bar-fill').style.width = pct + '%';
-
-  const el = document.getElementById('goal-items');
-  el.innerHTML = `
-    <div class="goal-item">
-      <div class="goal-item-label">フレーズ練習</div>
-      <div class="goal-dots">${Array.from({length: DAILY_GOAL_PHRASES}, (_, i) => `<span class="goal-dot ${i < p1 ? 'filled' : ''}"></span>`).join('')}</div>
-      <div class="goal-num">${p1}/${DAILY_GOAL_PHRASES}</div>
-    </div>
-    <div class="goal-item">
-      <div class="goal-item-label">会話練習</div>
-      <div class="goal-dots">${Array.from({length: DAILY_GOAL_DIALOGUES}, (_, i) => `<span class="goal-dot ${i < p2 ? 'filled' : ''}"></span>`).join('')}</div>
-      <div class="goal-num">${p2}/${DAILY_GOAL_DIALOGUES}</div>
-    </div>`;
-
-  if (pct === 100) {
-    stampToday();
-    renderStampCard();
-    renderStreak();
-  }
-}
-
-function renderSRSBanner() {
-  const due = getDueCards();
-  document.getElementById('srs-due-count').textContent = due.length;
-  document.getElementById('srs-banner').classList.toggle('no-due', due.length === 0);
-}
-
-const MILESTONES = [
-  { days: 3, label: '3日連続！', icon: '🌱', msg: '習慣の芽が出てきました！' },
-  { days: 7, label: '1週間！', icon: '🔥', msg: '1週間続けました！素晴らしい！' },
-  { days: 14, label: '2週間！', icon: '⭐', msg: '2週間の継続！本当にすごい！' },
-  { days: 30, label: '1ヶ月！', icon: '🏆', msg: '1ヶ月達成！あなたは本物の学習者です！' },
-  { days: 60, label: '2ヶ月！', icon: '💎', msg: '2ヶ月！英語力が確実に伸びています！' },
-];
-
-function renderMilestones() {
-  const streak = getStreak();
-  const el = document.getElementById('milestone-list');
-  el.innerHTML = MILESTONES.map(m => {
-    const unlocked = streak >= m.days;
+  const list = document.getElementById('roleplay-list');
+  list.innerHTML = ROLEPLAYS.map(r => {
+    const done = cando[r.id];
     return `
-      <div class="milestone-item ${unlocked ? 'unlocked' : 'locked'}">
-        <div class="milestone-icon">${unlocked ? m.icon : '🔒'}</div>
-        <div class="milestone-info">
-          <div class="milestone-label">${m.label}</div>
-          <div class="milestone-msg">${unlocked ? m.msg : `あと${m.days - streak}日`}</div>
-        </div>
-        ${unlocked ? '<div class="milestone-badge">達成</div>' : ''}
-      </div>`;
+      <button class="rp-card ${done ? 'done' : ''}" data-id="${r.id}">
+        <span class="rp-card-icon">${r.icon}</span>
+        <span class="rp-card-info">
+          <span class="rp-card-title">${r.title}</span>
+          <span class="rp-card-cando">${r.canDo}</span>
+        </span>
+        <span class="rp-card-badge">${done ? '✓' : r.level}</span>
+      </button>`;
   }).join('');
+  list.querySelectorAll('.rp-card').forEach(c => {
+    c.addEventListener('click', () => startRoleplay(c.dataset.id));
+  });
 }
 
-// ========================================
-// SRS OVERLAY
-// ========================================
-let srsQueue = [];
-let srsIdx = 0;
-let srsCorrect = 0;
+// ====== ROLEPLAY ENGINE ======
+let rp = null; // { data, turnIdx, spoke, total }
 
-function openSRSOverlay() {
-  srsQueue = getDueCards();
-  if (srsQueue.length === 0) { showToast('今日の復習はありません！'); return; }
-  srsIdx = 0;
-  srsCorrect = 0;
-  document.getElementById('srs-overlay').classList.remove('hidden');
+function startRoleplay(id) {
+  const data = ROLEPLAYS.find(r => r.id === id);
+  if (!data) return;
+  rp = { data, turnIdx: 0, spoke: 0, total: 0 };
+  document.getElementById('rp-overlay').classList.remove('hidden');
   document.body.style.overflow = 'hidden';
-  renderSRSCard();
+
+  document.getElementById('rp-title').textContent = data.title;
+  document.getElementById('rp-intro-icon').textContent = data.icon;
+  document.getElementById('rp-intro-title').textContent = data.title;
+  document.getElementById('rp-intro-scene').textContent = data.scene;
+  document.getElementById('rp-intro').classList.remove('hidden');
+  document.getElementById('rp-flow').classList.add('hidden');
+  document.getElementById('rp-complete').classList.add('hidden');
+  document.getElementById('rp-chat').innerHTML = '';
+  updateRpProgress();
 }
 
-function closeSRSOverlay() {
-  document.getElementById('srs-overlay').classList.add('hidden');
+function closeRoleplay() {
+  window.speechSynthesis.cancel();
+  if (recognition) { try { recognition.stop(); } catch (_) {} }
+  document.getElementById('rp-overlay').classList.add('hidden');
   document.body.style.overflow = '';
-  renderHome();
+  rp = null;
+  renderTalk();
 }
 
-function renderSRSCard() {
-  const card = srsQueue[srsIdx];
-  const total = srsQueue.length;
-  document.getElementById('srs-overlay-counter').textContent = `${srsIdx + 1} / ${total}`;
-  document.getElementById('srs-progress-fill').style.width = `${(srsIdx / total) * 100}%`;
-  document.getElementById('srs-card-ja').textContent = card.phrase.ja;
-  document.getElementById('srs-card-en').textContent = card.phrase.en;
-  document.getElementById('srs-card-example').textContent = card.phrase.example || '';
-  document.getElementById('srs-card-answer').classList.add('hidden');
-  document.getElementById('srs-reveal-btn').classList.remove('hidden');
-  document.getElementById('srs-rating').classList.add('hidden');
-  document.getElementById('srs-complete').classList.add('hidden');
+function beginRoleplayFlow() {
+  document.getElementById('rp-intro').classList.add('hidden');
+  document.getElementById('rp-flow').classList.remove('hidden');
+  rp.turnIdx = 0;
+  rp.total = rp.data.turns.filter(t => t.role === 'you').length;
+  rp.spoke = 0;
+  nextTurn();
 }
 
-function revealSRSAnswer() {
-  document.getElementById('srs-card-answer').classList.remove('hidden');
-  document.getElementById('srs-reveal-btn').classList.add('hidden');
-  document.getElementById('srs-rating').classList.remove('hidden');
-  speak(srsQueue[srsIdx].phrase.en);
+function updateRpProgress() {
+  if (!rp) return;
+  const total = rp.data.turns.length;
+  const pct = Math.round((rp.turnIdx / total) * 100);
+  document.getElementById('rp-progress-fill').style.width = pct + '%';
+  document.getElementById('rp-progress-text').textContent = `${Math.min(rp.turnIdx + 1, total)} / ${total}`;
 }
 
-function rateSRSCard(score) {
-  const card = srsQueue[srsIdx];
-  const correct = score >= 2;
-  if (correct) srsCorrect++;
-  updateSRSCard(card.key, correct);
-  stampToday();
+function addChatBubble(role, en, ja, extraClass = '') {
+  const chat = document.getElementById('rp-chat');
+  const isYou = role === 'you';
+  const name = isYou ? 'あなた' : (rp.data.npcName || '相手');
+  const bubble = document.createElement('div');
+  bubble.className = `chat-row ${isYou ? 'you' : 'npc'} ${extraClass}`;
+  bubble.innerHTML = `
+    <div class="chat-bubble">
+      <div class="chat-name">${name}</div>
+      <div class="chat-en">${en}</div>
+      <div class="chat-ja">${ja}</div>
+    </div>`;
+  chat.appendChild(bubble);
+  chat.scrollTop = chat.scrollHeight;
+  return bubble;
+}
 
-  // Track phrase practice
-  progress[`phrase_${card.key}`] = Date.now();
-  saveProgress(progress);
+function nextTurn() {
+  const turns = rp.data.turns;
+  updateRpProgress();
+  if (rp.turnIdx >= turns.length) { finishRoleplay(); return; }
 
-  srsIdx++;
-  if (srsIdx >= srsQueue.length) {
-    showSRSComplete();
+  const turn = turns[rp.turnIdx];
+  document.getElementById('rp-your-turn').classList.add('hidden');
+  document.getElementById('rp-npc-turn').classList.add('hidden');
+
+  if (turn.role === 'npc') {
+    const bubble = addChatBubble('npc', turn.en, turn.ja);
+    bubble.classList.add('speaking');
+    speak(turn.en, 0.9, () => {
+      bubble.classList.remove('speaking');
+      const nextT = turns[rp.turnIdx + 1];
+      rp.turnIdx++;
+      if (nextT && nextT.role === 'you') {
+        nextTurn();
+      } else {
+        document.getElementById('rp-npc-turn').classList.remove('hidden');
+      }
+    });
   } else {
-    renderSRSCard();
+    presentYourTurn(turn);
   }
 }
 
-function showSRSComplete() {
-  document.getElementById('srs-card-ja').textContent = '';
-  document.getElementById('srs-card-answer').classList.add('hidden');
-  document.getElementById('srs-rating').classList.add('hidden');
-  document.getElementById('srs-reveal-btn').classList.add('hidden');
-  document.getElementById('srs-progress-fill').style.width = '100%';
-  const total = srsQueue.length;
-  document.getElementById('srs-complete-msg').textContent = `${total}件中${srsCorrect}件正解！ 🎯`;
-  document.getElementById('srs-complete').classList.remove('hidden');
+function presentYourTurn(turn) {
+  const panel = document.getElementById('rp-your-turn');
+  panel.classList.remove('hidden');
+  document.getElementById('rp-prompt-ja').textContent = turn.ja;
+  document.getElementById('rp-hint').textContent = turn.en;
+  document.getElementById('rp-hint').classList.add('hidden');
+  document.getElementById('rp-recog-result').classList.add('hidden');
+  document.getElementById('rp-recog-result').innerHTML = '';
+  const btn = document.getElementById('rp-mic-btn');
+  btn.classList.remove('recording', 'success');
+  document.getElementById('rp-mic-label').textContent = 'タップして話す';
+  document.getElementById('rp-mic-icon').textContent = '🎙️';
+  const chat = document.getElementById('rp-chat');
+  chat.scrollTop = chat.scrollHeight;
 }
 
-// ========================================
-// CONVERSATION TAB
-// ========================================
-function initConversationTab() {
-  document.getElementById('conv-mode-tabs').addEventListener('click', e => {
-    const btn = e.target.closest('.mode-btn');
-    if (!btn) return;
-    convMode = btn.dataset.mode;
-    document.querySelectorAll('#conv-mode-tabs .mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === convMode));
-    renderDialogueList();
-  });
-  renderDialogueList();
-}
-
-function renderDialogueList() {
-  const isBiz = convMode === 'business';
-  const list = isBiz
-    ? DIALOGUES.filter(d => d.isBusiness).concat(BIZ_DIALOGUES)
-    : DIALOGUES.filter(d => !d.isBusiness);
-  const container = document.getElementById('dialogue-list');
-
-  if (list.length === 0) {
-    container.innerHTML = '<p class="empty-msg">会話シナリオを準備中です</p>';
+function recordYourTurn() {
+  const turn = rp.data.turns[rp.turnIdx];
+  recognition = initRecognition();
+  if (!recognition) {
+    showToast('音声認識が使えません。お手本を聞いてリピートしましょう。');
+    speak(turn.en);
+    document.getElementById('rp-hint').classList.remove('hidden');
     return;
   }
-
-  container.innerHTML = list.map((d, i) => {
-    const done = progress[`dialogue_${d.id}`] ? 'done' : '';
-    return `
-      <div class="dialogue-card ${done}" data-id="${d.id}" role="button" tabindex="0">
-        <div class="dialogue-icon">${d.icon}</div>
-        <div class="dialogue-info">
-          <div class="dialogue-title">${d.title}</div>
-          <div class="dialogue-meta">
-            <span class="level-badge ${d.isBusiness ? 'biz' : ''}">${d.level}</span>
-            <span class="line-count">${d.lines.length}行</span>
-          </div>
-        </div>
-        ${done ? '<div class="done-badge">✓</div>' : ''}
-      </div>`;
-  }).join('');
-
-  container.querySelectorAll('.dialogue-card').forEach(card => {
-    const open = () => {
-      const all = [...DIALOGUES, ...BIZ_DIALOGUES];
-      const d = all.find(x => x.id === card.dataset.id);
-      if (d) openDialogue(d);
-    };
-    card.addEventListener('click', open);
-    card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') open(); });
-  });
-}
-
-function openDialogue(d) {
-  currentDialogue = d;
-  currentDialogueLine = 0;
-  document.getElementById('dialogue-list-view').classList.add('hidden');
-  document.getElementById('dialogue-detail-view').classList.remove('hidden');
-  renderDialogueDetail();
-}
-
-function closeDialogue() {
-  window.speechSynthesis.cancel();
-  document.getElementById('dialogue-list-view').classList.remove('hidden');
-  document.getElementById('dialogue-detail-view').classList.add('hidden');
-  renderDialogueList();
-}
-
-function renderDialogueDetail() {
-  const d = currentDialogue;
-  document.getElementById('dialogue-detail-title').textContent = `${d.icon} ${d.title}`;
-  document.getElementById('pronunciation-result').classList.add('hidden');
-
-  const linesEl = document.getElementById('dialogue-lines');
-  linesEl.innerHTML = d.lines.map((line, i) => `
-    <div class="dialogue-line ${i === currentDialogueLine ? 'active' : ''} ${i < currentDialogueLine ? 'past' : ''}" id="dline-${i}">
-      <div class="line-speaker">${line.speaker}</div>
-      <div class="line-en">${line.en}</div>
-      <div class="line-ja">${line.ja}</div>
-      <button class="line-speak-btn" data-text="${line.en.replace(/"/g, '&quot;')}" aria-label="発音">🔊</button>
-    </div>`).join('');
-
-  linesEl.querySelectorAll('.line-speak-btn').forEach(btn => {
-    btn.addEventListener('click', e => { e.stopPropagation(); speak(btn.dataset.text); });
-  });
-
-  document.getElementById('dl-prev-btn').disabled = currentDialogueLine === 0;
-  const isLast = currentDialogueLine >= d.lines.length - 1;
-  document.getElementById('dl-next-btn').textContent = isLast ? '完了 ✓' : '次へ →';
-  document.getElementById('dl-progress').textContent = `${currentDialogueLine + 1} / ${d.lines.length}`;
-
-  setTimeout(() => {
-    document.getElementById(`dline-${currentDialogueLine}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }, 100);
-}
-
-function nextDialogueLine() {
-  const d = currentDialogue;
-  if (currentDialogueLine < d.lines.length - 1) {
-    currentDialogueLine++;
-    renderDialogueDetail();
-    speak(d.lines[currentDialogueLine].en);
-  } else {
-    progress[`dialogue_${d.id}`] = Date.now();
-    saveProgress(progress);
-    stampToday();
-    showToast('会話練習完了！ 🎉');
-    closeDialogue();
-    renderDailyGoal();
-  }
-}
-
-function startShadowing() {
-  const line = currentDialogue.lines[currentDialogueLine];
-  speak(line.en, 0.85, () => startDialogueRecording(line.en));
-}
-
-function startDialogueRecording(target) {
-  recognition = initRecognition();
-  if (!recognition) { showToast('音声認識非対応のブラウザです'); return; }
-  const btn = document.getElementById('dl-shadow-btn');
-  btn.textContent = '🎙️ 聞いています...';
+  const btn = document.getElementById('rp-mic-btn');
   btn.classList.add('recording');
-  let final = '';
+  document.getElementById('rp-mic-label').textContent = '聞いています...';
+  document.getElementById('rp-mic-icon').textContent = '🔴';
+
+  let finalText = '';
   recognition.onresult = e => {
-    final = '';
+    finalText = '';
     for (let i = e.resultIndex; i < e.results.length; i++) {
-      if (e.results[i].isFinal) final += e.results[i][0].transcript;
+      finalText += e.results[i][0].transcript;
     }
   };
   recognition.onend = () => {
-    btn.textContent = '🗣️ シャドーイング';
     btn.classList.remove('recording');
-    if (final) {
-      const score = scoreMatch(target, final);
-      const el = document.getElementById('pronunciation-result');
-      const cls = score >= 80 ? 'good' : score >= 50 ? 'ok' : 'retry';
-      el.className = `pronunciation-result ${cls}`;
-      el.innerHTML = `${score >= 80 ? '🌟' : score >= 50 ? '👍' : '🔄'} ${score}%<br><small>「${final}」</small>`;
-      el.classList.remove('hidden');
+    document.getElementById('rp-mic-label').textContent = 'タップして話す';
+    document.getElementById('rp-mic-icon').textContent = '🎙️';
+    if (finalText.trim()) {
+      evaluateYourTurn(turn, finalText.trim());
+    } else {
+      showToast('うまく聞き取れませんでした。もう一度どうぞ');
     }
   };
-  recognition.onerror = () => { btn.textContent = '🗣️ シャドーイング'; btn.classList.remove('recording'); };
-  recognition.start();
+  recognition.onerror = (ev) => {
+    btn.classList.remove('recording');
+    document.getElementById('rp-mic-label').textContent = 'タップして話す';
+    document.getElementById('rp-mic-icon').textContent = '🎙️';
+    if (ev.error === 'not-allowed') showToast('マイクの許可が必要です');
+  };
+  try { recognition.start(); } catch (_) {}
 }
 
-// ========================================
-// PHRASES TAB
-// ========================================
-let speakingCatId = 'greetings';
-let speakingIdx = 0;
+function evaluateYourTurn(turn, spoken) {
+  const targets = [turn.en, ...(turn.accept || [])];
+  const score = bestScore(spoken, targets);
+  const resultEl = document.getElementById('rp-recog-result');
+  resultEl.classList.remove('hidden');
+
+  if (score >= 60) {
+    rp.spoke++;
+    const hl = highlightWords(spoken, turn.en);
+    resultEl.className = 'rp-recog-result success';
+    resultEl.innerHTML = `<div class="recog-badge">🎉 ${score >= 85 ? 'Perfect!' : 'Good!'} ${score}%</div><div class="recog-said">${hl}</div>`;
+    progress[`spoke_${rp.data.id}_${rp.turnIdx}`] = Date.now();
+    saveProgress(progress);
+    document.getElementById('rp-mic-btn').classList.add('success');
+    if (navigator.vibrate) { try { navigator.vibrate(40); } catch (_) {} }
+    addChatBubble('you', turn.en, turn.ja);
+    setTimeout(() => { rp.turnIdx++; nextTurn(); }, 1200);
+  } else {
+    resultEl.className = 'rp-recog-result retry';
+    resultEl.innerHTML = `<div class="recog-badge">もう少し！ ${score}%</div>
+      <div class="recog-said">あなた: 「${spoken}」</div>
+      <div class="recog-model">お手本: ${turn.en}</div>
+      <div class="recog-hint-row">
+        <button class="btn-ghost" id="retry-listen">🔊 お手本を聞く</button>
+        <button class="btn-ghost" id="retry-pass">これで進む →</button>
+      </div>`;
+    document.getElementById('rp-hint').textContent = turn.en;
+    document.getElementById('rp-hint').classList.remove('hidden');
+    document.getElementById('retry-listen').addEventListener('click', () => speak(turn.en, 0.8));
+    document.getElementById('retry-pass').addEventListener('click', () => {
+      addChatBubble('you', turn.en, turn.ja);
+      rp.turnIdx++;
+      nextTurn();
+    });
+    speak(turn.en, 0.8);
+  }
+}
+
+function finishRoleplay() {
+  document.getElementById('rp-your-turn').classList.add('hidden');
+  document.getElementById('rp-npc-turn').classList.add('hidden');
+  document.getElementById('rp-flow').classList.add('hidden');
+  document.getElementById('rp-complete').classList.remove('hidden');
+  document.getElementById('rp-progress-fill').style.width = '100%';
+
+  const isNewCanDo = unlockCanDo(rp.data.id);
+  progress[`dialogue_${rp.data.id}`] = Date.now();
+  saveProgress(progress);
+  stampToday();
+  const scenes = addSceneCount();
+  const streak = getStreak();
+
+  document.getElementById('rp-complete-msg').textContent = randomCelebration();
+  document.getElementById('rp-cando-unlock').innerHTML = isNewCanDo
+    ? `<div class="cando-unlock-badge">🏅 新しくできるようになった！</div>
+       <div class="cando-unlock-text">${rp.data.icon} ${rp.data.canDo}</div>`
+    : `<div class="cando-unlock-text">${rp.data.icon} ${rp.data.canDo}</div>`;
+  document.getElementById('rp-complete-stats').innerHTML =
+    `<div>🗣️ ${rp.spoke} / ${rp.total} フレーズを自分で発話</div>
+     <div>🎯 通算 ${scenes} 回の会話達成${streak > 1 ? ` · ${streak}日連続` : ''}</div>`;
+
+  fireConfetti();
+  if (navigator.vibrate) { try { navigator.vibrate([60, 40, 80]); } catch (_) {} }
+}
+
+function fireConfetti() {
+  const c = document.getElementById('confetti');
+  c.innerHTML = '';
+  const colors = ['#00d4ff', '#7c3aed', '#10b981', '#f59e0b', '#ef4444'];
+  for (let i = 0; i < 40; i++) {
+    const p = document.createElement('div');
+    p.className = 'confetti-piece';
+    p.style.left = Math.random() * 100 + '%';
+    p.style.background = colors[i % colors.length];
+    p.style.animationDelay = (Math.random() * 0.5) + 's';
+    p.style.animationDuration = (1 + Math.random() * 1) + 's';
+    c.appendChild(p);
+  }
+  setTimeout(() => { c.innerHTML = ''; }, 2500);
+}
+
+// ====== PHRASES (CHUNKS) TAB ======
+function renderPhrasesTab() {
+  renderCategoryList();
+  renderPhraseList();
+}
 
 function initPhrasesTab() {
-  // Mode tabs
-  document.getElementById('phrase-mode-tabs').addEventListener('click', e => {
-    const btn = e.target.closest('.mode-btn');
-    if (!btn) return;
-    phraseMode = btn.dataset.mode;
-    document.querySelectorAll('#phrase-mode-tabs .mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === phraseMode));
-    document.getElementById('phrase-browse-view').classList.toggle('hidden', phraseMode !== 'browse');
-    document.getElementById('phrase-quiz-view').classList.toggle('hidden', phraseMode !== 'quiz');
-    document.getElementById('phrase-speaking-view').classList.toggle('hidden', phraseMode !== 'speaking');
-    if (phraseMode === 'quiz') startQuiz();
-  });
-
-  // Type tabs (general / business)
   document.getElementById('phrase-type-tabs').addEventListener('click', e => {
     const btn = e.target.closest('.mode-btn');
     if (!btn) return;
     currentPhraseType = btn.dataset.type;
     document.querySelectorAll('#phrase-type-tabs .mode-btn').forEach(b => b.classList.toggle('active', b.dataset.type === currentPhraseType));
-    renderCategoryList();
     currentCategory = currentPhraseType === 'business' ? 'biz_meeting' : 'greetings';
+    renderCategoryList();
     renderPhraseList();
   });
-
-  // Category tabs
   document.getElementById('category-tabs').addEventListener('click', e => {
     const btn = e.target.closest('.cat-btn');
     if (!btn) return;
@@ -457,269 +381,73 @@ function initPhrasesTab() {
     btn.classList.add('active');
     renderPhraseList();
   });
-
-  renderCategoryList();
-  renderPhraseList();
-  initSpeakingMode();
 }
 
 function renderCategoryList() {
   const cats = currentPhraseType === 'business' ? BIZ_CATEGORIES : CATEGORIES;
-  const el = document.getElementById('category-tabs');
-  el.innerHTML = cats.map(c => `
+  document.getElementById('category-tabs').innerHTML = cats.map(c => `
     <button class="cat-btn ${c.id === currentCategory ? 'active' : ''}" data-cat="${c.id}" style="--cat-color:${c.color}">
       <span>${c.icon}</span><span>${c.label}</span>
     </button>`).join('');
 }
 
 function renderPhraseList() {
-  const allPhrases = currentPhraseType === 'business' ? BIZ_PHRASES : PHRASES;
-  const phrases = allPhrases[currentCategory] || [];
+  const all = currentPhraseType === 'business' ? BIZ_PHRASES : PHRASES;
+  const phrases = all[currentCategory] || [];
   const container = document.getElementById('phrase-list');
   container.innerHTML = phrases.map((p, i) => {
     const favKey = `${currentCategory}_${i}`;
     const isFav = favorites.includes(favKey);
-    const srsCard = getSRSCard(favKey);
-    const levelLabel = ['NEW', '学習中', '若い', '成熟', '習得'][srsCard.level] || 'NEW';
-    const levelClass = ['srs-new', 'srs-learning', 'srs-young', 'srs-mature', 'srs-mastered'][srsCard.level] || 'srs-new';
     return `
       <div class="phrase-card">
         <div class="phrase-main">
-          <div class="phrase-header">
-            <div class="phrase-en">${p.en}</div>
-            <span class="srs-level-badge ${levelClass}">${levelLabel}</span>
-          </div>
+          <div class="phrase-en">${p.en}</div>
           <div class="phrase-ja">${p.ja}</div>
           <div class="phrase-example">${p.example}</div>
         </div>
         <div class="phrase-actions">
-          <button class="icon-btn speak-btn" data-text="${p.en.replace(/"/g, '&quot;')}" aria-label="発音">🔊</button>
-          <button class="icon-btn speak-slow-btn" data-text="${p.en.replace(/"/g, '&quot;')}" aria-label="ゆっくり">🐢</button>
-          <button class="icon-btn fav-btn ${isFav ? 'active' : ''}" data-key="${favKey}" aria-label="お気に入り">${isFav ? '♥' : '♡'}</button>
+          <button class="icon-btn speak-btn" data-text="${p.en.replace(/"/g, '&quot;')}">🔊</button>
+          <button class="icon-btn slow-btn" data-text="${p.en.replace(/"/g, '&quot;')}">🐢</button>
+          <button class="icon-btn fav-btn ${isFav ? 'active' : ''}" data-key="${favKey}">${isFav ? '♥' : '♡'}</button>
         </div>
       </div>`;
   }).join('');
-
-  container.querySelectorAll('.speak-btn').forEach(btn => btn.addEventListener('click', () => speak(btn.dataset.text)));
-  container.querySelectorAll('.speak-slow-btn').forEach(btn => btn.addEventListener('click', () => speak(btn.dataset.text, 0.6)));
-  container.querySelectorAll('.fav-btn').forEach(btn => btn.addEventListener('click', () => toggleFavorite(btn.dataset.key, btn)));
+  container.querySelectorAll('.speak-btn').forEach(b => b.addEventListener('click', () => speak(b.dataset.text)));
+  container.querySelectorAll('.slow-btn').forEach(b => b.addEventListener('click', () => speak(b.dataset.text, 0.6)));
+  container.querySelectorAll('.fav-btn').forEach(b => b.addEventListener('click', () => toggleFav(b.dataset.key, b)));
 }
 
-function toggleFavorite(key, btn) {
-  const idx = favorites.indexOf(key);
-  if (idx >= 0) { favorites.splice(idx, 1); btn.classList.remove('active'); btn.textContent = '♡'; }
+function toggleFav(key, btn) {
+  const i = favorites.indexOf(key);
+  if (i >= 0) { favorites.splice(i, 1); btn.classList.remove('active'); btn.textContent = '♡'; }
   else { favorites.push(key); btn.classList.add('active'); btn.textContent = '♥'; }
   saveFavorites(favorites);
 }
 
-// ========================================
-// QUIZ MODE
-// ========================================
-let quizQueue = [];
-let quizIdx = 0;
-
-function startQuiz() {
-  // Build queue from all phrases, prioritize SRS due
-  const due = getDueCards();
-  const all = [];
-  [...CATEGORIES, ...BIZ_CATEGORIES].forEach(cat => {
-    const phrases = (PHRASES[cat.id] || BIZ_PHRASES[cat.id] || []);
-    phrases.forEach((p, i) => all.push({ key: `${cat.id}_${i}`, phrase: p }));
-  });
-  // Mix: due first, then shuffle rest
-  const dueKeys = new Set(due.map(d => d.key));
-  const rest = all.filter(x => !dueKeys.has(x.key)).sort(() => Math.random() - 0.5);
-  quizQueue = [...due.map(d => ({ key: d.key, phrase: d.phrase })), ...rest].slice(0, 10);
-  quizIdx = 0;
-  renderQuizCard();
-}
-
-function renderQuizCard() {
-  if (quizIdx >= quizQueue.length) {
-    showToast('クイズ完了！ 🎉');
-    document.getElementById('phrase-mode-tabs').querySelector('[data-mode="browse"]').click();
-    return;
-  }
-  const item = quizQueue[quizIdx];
-  document.getElementById('quiz-counter').textContent = `${quizIdx + 1} / ${quizQueue.length}`;
-  document.getElementById('quiz-ja').textContent = item.phrase.ja;
-  document.getElementById('quiz-answer').textContent = item.phrase.en;
-  document.getElementById('quiz-example').textContent = item.phrase.example || '';
-  document.getElementById('quiz-answer').classList.add('hidden');
-  document.getElementById('quiz-example').classList.add('hidden');
-  document.getElementById('quiz-reveal-btn').classList.remove('hidden');
-  document.getElementById('quiz-rating').classList.add('hidden');
-}
-
-function revealQuizAnswer() {
-  const item = quizQueue[quizIdx];
-  document.getElementById('quiz-answer').classList.remove('hidden');
-  document.getElementById('quiz-example').classList.remove('hidden');
-  document.getElementById('quiz-reveal-btn').classList.add('hidden');
-  document.getElementById('quiz-rating').classList.remove('hidden');
-  speak(item.phrase.en);
-}
-
-function rateQuizCard(score) {
-  const item = quizQueue[quizIdx];
-  updateSRSCard(item.key, score >= 2);
-  progress[`phrase_${item.key}`] = Date.now();
-  saveProgress(progress);
-  stampToday();
-  quizIdx++;
-  renderDailyGoal();
-  renderQuizCard();
-}
-
-// ========================================
-// SPEAKING MODE
-// ========================================
-function initSpeakingMode() {
-  const allCats = [...CATEGORIES, ...BIZ_CATEGORIES];
-  const sel = document.getElementById('sp-category-select');
-  sel.innerHTML = allCats.map(c => `<option value="${c.id}">${c.icon} ${c.label}</option>`).join('');
-  sel.addEventListener('change', () => { speakingCatId = sel.value; speakingIdx = 0; loadSpeakingPhrase(); });
-
-  document.getElementById('sp-listen-btn').addEventListener('click', () => {
-    const p = getCurrentSpeakingPhrase();
-    if (p) speak(p.en);
-  });
-  document.getElementById('sp-listen-slow-btn').addEventListener('click', () => {
-    const p = getCurrentSpeakingPhrase();
-    if (p) speak(p.en, 0.6);
-  });
-  document.getElementById('sp-record-btn').addEventListener('click', () => {
-    const p = getCurrentSpeakingPhrase();
-    if (p) startSpeakingRecording(p.en);
-  });
-  document.getElementById('sp-next-btn').addEventListener('click', () => {
-    const phrases = getSpeakingPhrases();
-    speakingIdx = (speakingIdx + 1) % phrases.length;
-    loadSpeakingPhrase();
-  });
-  document.getElementById('sp-prev-btn').addEventListener('click', () => {
-    const phrases = getSpeakingPhrases();
-    speakingIdx = (speakingIdx - 1 + phrases.length) % phrases.length;
-    loadSpeakingPhrase();
-  });
-  loadSpeakingPhrase();
-}
-
-function getSpeakingPhrases() {
-  return PHRASES[speakingCatId] || BIZ_PHRASES[speakingCatId] || [];
-}
-
-function getCurrentSpeakingPhrase() {
-  return getSpeakingPhrases()[speakingIdx];
-}
-
-function loadSpeakingPhrase() {
-  const phrases = getSpeakingPhrases();
-  const p = phrases[speakingIdx];
-  if (!p) return;
-  document.getElementById('sp-phrase-en').textContent = p.en;
-  document.getElementById('sp-phrase-ja').textContent = p.ja;
-  document.getElementById('sp-phrase-example').textContent = p.example || '';
-  document.getElementById('sp-counter').textContent = `${speakingIdx + 1} / ${phrases.length}`;
-  document.getElementById('sp-result').classList.add('hidden');
-}
-
-function startSpeakingRecording(target) {
-  recognition = initRecognition();
-  if (!recognition) { showToast('音声認識非対応のブラウザです'); return; }
-  const btn = document.getElementById('sp-record-btn');
-  btn.textContent = '🎙️ 録音中...';
-  btn.classList.add('recording');
-  let final = '';
-  recognition.onresult = e => {
-    final = '';
-    for (let i = e.resultIndex; i < e.results.length; i++) {
-      if (e.results[i].isFinal) final += e.results[i][0].transcript;
-    }
-  };
-  recognition.onend = () => {
-    btn.textContent = '🎙️ 発音';
-    btn.classList.remove('recording');
-    if (final) {
-      const score = scoreMatch(target, final);
-      const el = document.getElementById('sp-result');
-      const cls = score >= 80 ? 'good' : score >= 50 ? 'ok' : 'retry';
-      el.innerHTML = `${score >= 80 ? '🌟' : score >= 50 ? '👍' : '🔄'} ${score}%<br><small>「${final}」</small>`;
-      el.className = `sp-result-box ${cls}`;
-      el.classList.remove('hidden');
-      if (score >= 50) {
-        const key = `phrase_${speakingCatId}_${speakingIdx}`;
-        progress[key] = Date.now();
-        saveProgress(progress);
-        updateSRSCard(`${speakingCatId}_${speakingIdx}`, score >= 80);
-        stampToday();
-        renderDailyGoal();
-      }
-    }
-  };
-  recognition.onerror = () => { btn.textContent = '🎙️ 発音'; btn.classList.remove('recording'); };
-  recognition.start();
-}
-
-// ========================================
-// PROGRESS TAB
-// ========================================
+// ====== PROGRESS TAB ======
 function renderProgress() {
-  const allDialogues = [...DIALOGUES, ...BIZ_DIALOGUES];
-  const doneD = allDialogues.filter(d => progress[`dialogue_${d.id}`]).length;
-  document.getElementById('prog-dialogues').textContent = `${doneD}/${allDialogues.length}`;
-  document.getElementById('prog-streak').textContent = getStreak();
+  document.getElementById('scenes-num').textContent = getScenesCount();
 
-  const srs = loadSRS();
-  const mastered = Object.values(srs).filter(c => c.level >= 4).length;
-  document.getElementById('prog-mastered').textContent = mastered;
+  const cando = loadCanDo();
+  const list = document.getElementById('cando-list');
+  list.innerHTML = ROLEPLAYS.map(r => {
+    const done = cando[r.id];
+    return `
+      <div class="cando-item ${done ? 'done' : ''}">
+        <span class="cando-check">${done ? '✅' : '⬜'}</span>
+        <span class="cando-icon">${r.icon}</span>
+        <span class="cando-label">${r.canDo}</span>
+      </div>`;
+  }).join('');
 
-  const pct = allDialogues.length > 0 ? Math.round((doneD / allDialogues.length) * 100) : 0;
-  document.getElementById('prog-bar-fill').style.width = pct + '%';
-  document.getElementById('prog-bar-label').textContent = pct + '%';
-
-  // SRS breakdown
-  const counts = [0, 0, 0, 0, 0];
-  Object.values(srs).forEach(c => { if (c.level >= 0 && c.level <= 4) counts[c.level]++; });
-  const labels = ['NEW', '学習中', '若い', '成熟', '習得'];
-  const colors = ['#64748b', '#f59e0b', '#10b981', '#00d4ff', '#7c3aed'];
-  const total = Object.keys(srs).length || 1;
-  document.getElementById('srs-breakdown-bars').innerHTML = labels.map((l, i) => `
-    <div class="srs-bar-row">
-      <div class="srs-bar-label ${['srs-new','srs-learning','srs-young','srs-mature','srs-mastered'][i]}">${l}</div>
-      <div class="srs-bar-track"><div class="srs-bar-fill" style="width:${Math.round(counts[i]/total*100)}%;background:${colors[i]}"></div></div>
-      <div class="srs-bar-count">${counts[i]}</div>
-    </div>`).join('');
-
-  const completedEl = document.getElementById('prog-completed-list');
-  const completed = allDialogues.filter(d => progress[`dialogue_${d.id}`]);
-  completedEl.innerHTML = completed.length === 0
-    ? '<p class="empty-msg">まだ完了した会話はありません</p>'
-    : completed.map(d => `
-        <div class="completed-item">
-          <span>${d.icon} ${d.title}</span>
-          <div class="done-badge">✓</div>
-        </div>`).join('');
-
-  const favEl = document.getElementById('prog-fav-list');
-  favEl.innerHTML = favorites.length === 0
-    ? '<p class="empty-msg">お気に入りフレーズはまだありません</p>'
-    : favorites.slice(0, 10).map(key => {
-        const [cat, idx] = key.split('_');
-        const allP = { ...PHRASES, ...BIZ_PHRASES };
-        const p = allP[cat]?.[parseInt(idx)];
-        return p ? `
-          <div class="fav-item">
-            <div class="fav-en">${p.en}</div>
-            <div class="fav-ja">${p.ja}</div>
-            <button class="icon-btn" onclick="speak('${p.en.replace(/'/g, "\\'")}')">🔊</button>
-          </div>` : '';
-      }).join('');
+  const streak = getStreak();
+  const gs = document.getElementById('gs-text');
+  if (streak <= 0) gs.textContent = 'さあ、今日から始めよう！';
+  else if (streak === 1) gs.textContent = '今日が初日！この調子！';
+  else gs.textContent = `${streak}日連続で話せています！`;
 }
 
-// ========================================
-// INIT
-// ========================================
+// ====== INIT ======
 document.addEventListener('DOMContentLoaded', () => {
   window.speechSynthesis.getVoices();
   if (window.speechSynthesis.onvoiceschanged !== undefined) {
@@ -727,61 +455,55 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   initTabs();
-  initConversationTab();
   initPhrasesTab();
-  renderHome();
+  renderTalk();
 
-  // Dialogue controls
-  document.getElementById('dl-back-btn').addEventListener('click', closeDialogue);
-  document.getElementById('dl-prev-btn').addEventListener('click', () => {
-    if (currentDialogueLine > 0) { currentDialogueLine--; renderDialogueDetail(); }
-  });
-  document.getElementById('dl-next-btn').addEventListener('click', nextDialogueLine);
-  document.getElementById('dl-speak-current-btn').addEventListener('click', () => {
-    if (currentDialogue) speak(currentDialogue.lines[currentDialogueLine].en);
-  });
-  document.getElementById('dl-shadow-btn').addEventListener('click', startShadowing);
-
-  // Quiz controls
-  document.getElementById('quiz-reveal-btn').addEventListener('click', revealQuizAnswer);
-  document.getElementById('quiz-exit-btn').addEventListener('click', () => {
-    document.getElementById('phrase-mode-tabs').querySelector('[data-mode="browse"]').click();
-  });
-  document.getElementById('quiz-rating').addEventListener('click', e => {
-    const btn = e.target.closest('.rating-btn');
-    if (btn) rateQuizCard(parseInt(btn.dataset.score));
+  document.getElementById('hero-start-btn').addEventListener('click', () => {
+    if (todaysRoleplay) startRoleplay(todaysRoleplay.id);
   });
 
-  // SRS overlay
-  document.getElementById('srs-start-btn').addEventListener('click', openSRSOverlay);
-  document.getElementById('srs-close-btn').addEventListener('click', closeSRSOverlay);
-  document.getElementById('srs-done-btn').addEventListener('click', closeSRSOverlay);
-  document.getElementById('srs-reveal-btn').addEventListener('click', revealSRSAnswer);
-  document.getElementById('srs-rating').addEventListener('click', e => {
-    const btn = e.target.closest('.rating-btn');
-    if (btn) rateSRSCard(parseInt(btn.dataset.score));
+  document.getElementById('rp-close-btn').addEventListener('click', closeRoleplay);
+  document.getElementById('rp-intro-start').addEventListener('click', beginRoleplayFlow);
+  document.getElementById('rp-mic-btn').addEventListener('click', recordYourTurn);
+  document.getElementById('rp-hint-btn').addEventListener('click', () => {
+    document.getElementById('rp-hint').classList.toggle('hidden');
   });
+  document.getElementById('rp-listen-btn').addEventListener('click', () => {
+    if (rp) speak(rp.data.turns[rp.turnIdx].en, 0.85);
+  });
+  document.getElementById('rp-skip-btn').addEventListener('click', () => {
+    const turn = rp.data.turns[rp.turnIdx];
+    addChatBubble('you', turn.en, turn.ja);
+    rp.turnIdx++;
+    nextTurn();
+  });
+  document.getElementById('rp-npc-replay').addEventListener('click', () => {
+    const prev = rp.data.turns[rp.turnIdx - 1];
+    if (prev) speak(prev.en, 0.9);
+  });
+  document.getElementById('rp-npc-next').addEventListener('click', () => {
+    document.getElementById('rp-npc-turn').classList.add('hidden');
+    nextTurn();
+  });
+  document.getElementById('rp-again-btn').addEventListener('click', () => { if (rp) startRoleplay(rp.data.id); });
+  document.getElementById('rp-done-btn').addEventListener('click', closeRoleplay);
 
-  // Progress reset
   document.getElementById('prog-reset-btn').addEventListener('click', () => {
-    if (!confirm('学習データをリセットしますか？')) return;
-    progress = {}; favorites = []; saveProgress(progress); saveFavorites(favorites);
-    localStorage.removeItem(SRS_KEY); localStorage.removeItem(STAMPS_KEY);
-    renderProgress(); renderHome();
+    if (!confirm('学習データをすべてリセットしますか？')) return;
+    [PROGRESS_KEY, FAVORITES_KEY, SRS_KEY, STAMPS_KEY, CANDO_KEY, SCENES_KEY].forEach(k => localStorage.removeItem(k));
+    progress = {}; favorites = [];
+    renderProgress(); renderTalk();
     showToast('リセットしました');
   });
 
-  // PWA install
-  let deferredPrompt = null;
+  let deferred = null;
   window.addEventListener('beforeinstallprompt', e => {
-    e.preventDefault(); deferredPrompt = e;
+    e.preventDefault(); deferred = e;
     document.getElementById('install-banner').classList.remove('hidden');
   });
   document.getElementById('install-btn')?.addEventListener('click', async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    await deferredPrompt.userChoice;
-    deferredPrompt = null;
+    if (!deferred) return;
+    deferred.prompt(); await deferred.userChoice; deferred = null;
     document.getElementById('install-banner').classList.add('hidden');
   });
   document.getElementById('install-dismiss-btn')?.addEventListener('click', () => {
@@ -790,7 +512,5 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
-  });
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
 }

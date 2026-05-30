@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#0a0a18">
-  <title>English Learning App</title>
+  <title>Speak! 英会話</title>
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icons/icon-192.svg">
   <link rel="stylesheet" href="css/style.css">
@@ -15,268 +15,144 @@
 <div id="app">
 
   <header class="header">
-    <div class="header-title">英語学習アプリ</div>
-    <div class="header-subtitle">Business English &amp; Daily Practice</div>
+    <div class="header-title">Speak!</div>
+    <div class="header-subtitle">声に出して、話せるようになる</div>
   </header>
 
   <div id="install-banner" class="install-banner hidden">
-    <p>ホーム画面に追加してオフラインでも使えます</p>
+    <p>ホーム画面に追加していつでも練習</p>
     <button id="install-btn" class="install-btn">追加</button>
     <button id="install-dismiss-btn" class="install-dismiss">✕</button>
   </div>
 
-  <!-- ===== HOME TAB ===== -->
-  <section id="tab-home" class="tab-content active">
+  <!-- ===== TALK TAB (HERO) ===== -->
+  <section id="tab-talk" class="tab-content active">
     <div class="scroll-area">
 
-      <!-- Streak Banner -->
-      <div class="streak-banner">
-        <div class="streak-fire">🔥</div>
-        <div class="streak-info">
-          <div class="streak-count" id="streak-count">0</div>
-          <div class="streak-label">日連続学習中</div>
-        </div>
-        <div class="streak-best">最高 <span id="streak-best">0</span>日</div>
+      <!-- One-tap hero -->
+      <div class="hero-card">
+        <div class="hero-greeting" id="hero-greeting">さあ、話そう</div>
+        <div class="hero-sub" id="hero-sub">今日のひとこと会話 · 約3分</div>
+        <button class="hero-start-btn" id="hero-start-btn">
+          <span class="hero-start-icon">🎙️</span>
+          <span id="hero-start-label">会話をはじめる</span>
+        </button>
+        <div class="hero-mini-stat" id="hero-mini-stat"></div>
       </div>
 
-      <!-- Weekly Stamp Card -->
-      <div class="stamp-card">
-        <div class="stamp-card-title">今週のスタンプ</div>
-        <div class="stamp-row" id="stamp-row"></div>
-      </div>
-
-      <!-- Daily Goal -->
-      <div class="daily-goal-card">
-        <div class="goal-title">今日の目標 <span id="goal-pct">0%</span></div>
-        <div class="goal-bar"><div class="goal-bar-fill" id="goal-bar-fill"></div></div>
-        <div class="goal-items" id="goal-items"></div>
-      </div>
-
-      <!-- SRS Review -->
-      <div class="srs-banner" id="srs-banner">
-        <div class="srs-banner-left">
-          <div class="srs-count" id="srs-due-count">0</div>
-          <div class="srs-label">件の復習</div>
-        </div>
-        <div class="srs-banner-mid">
-          <div class="srs-title">間隔反復復習</div>
-          <div class="srs-sub">忘却曲線に基づくおすすめ復習</div>
-        </div>
-        <button class="srs-start-btn" id="srs-start-btn">開始</button>
-      </div>
-
-      <!-- Milestones -->
-      <div class="milestones">
-        <div class="section-heading">マイルストーン</div>
-        <div id="milestone-list" class="milestone-list"></div>
-      </div>
+      <!-- Scenario picker (autonomy) -->
+      <div class="section-heading">シーンを選ぶ</div>
+      <div id="roleplay-list" class="roleplay-list"></div>
 
     </div>
   </section>
 
-  <!-- ===== CONVERSATION TAB ===== -->
-  <section id="tab-conversation" class="tab-content">
-    <div class="scroll-area">
-
-      <!-- Mode selector -->
-      <div class="mode-tabs" id="conv-mode-tabs">
-        <button class="mode-btn active" data-mode="general">日常会話</button>
-        <button class="mode-btn" data-mode="business">ビジネス</button>
-      </div>
-
-      <div id="dialogue-list-view">
-        <div id="dialogue-list"></div>
-      </div>
-
-      <div id="dialogue-detail-view" class="hidden">
-        <div class="dialogue-detail-header">
-          <button id="dl-back-btn" class="back-btn">← 戻る</button>
-          <div id="dialogue-detail-title"></div>
-        </div>
-        <div id="dialogue-lines" class="dialogue-lines"></div>
-        <div id="pronunciation-result" class="pronunciation-result hidden"></div>
-        <div class="dialogue-controls">
-          <div class="dialogue-ctrl-row">
-            <button id="dl-prev-btn" class="btn-secondary">← 前</button>
-            <span id="dl-progress">1 / 6</span>
-            <button id="dl-next-btn" class="btn-primary">次へ →</button>
-          </div>
-          <div class="dialogue-ctrl-row">
-            <button id="dl-speak-current-btn" class="btn-secondary" style="flex:1">🔊 聞く</button>
-            <button id="dl-shadow-btn" class="btn-shadow">🗣️ シャドーイング</button>
-          </div>
-        </div>
-      </div>
-
-    </div>
-  </section>
-
-  <!-- ===== PHRASES TAB ===== -->
+  <!-- ===== PHRASES (CHUNKS) TAB ===== -->
   <section id="tab-phrases" class="tab-content">
     <div class="scroll-area">
+      <div class="section-heading">使えるフレーズの「かたまり」</div>
+      <p class="tab-intro">会話で丸ごと使える表現を、声に出して覚えましょう。</p>
 
-      <!-- Mode: browse / quiz / speaking -->
-      <div class="mode-tabs" id="phrase-mode-tabs">
-        <button class="mode-btn active" data-mode="browse">フレーズ集</button>
-        <button class="mode-btn" data-mode="quiz">クイズ</button>
-        <button class="mode-btn" data-mode="speaking">スピーキング</button>
+      <div class="mode-tabs" id="phrase-type-tabs">
+        <button class="mode-btn active" data-type="general">日常</button>
+        <button class="mode-btn" data-type="business">ビジネス</button>
       </div>
-
-      <!-- Browse Mode -->
-      <div id="phrase-browse-view">
-        <div class="mode-tabs" id="phrase-type-tabs" style="margin-bottom:8px">
-          <button class="mode-btn active" data-type="general">日常</button>
-          <button class="mode-btn" data-type="business">ビジネス</button>
-        </div>
-        <div class="cat-scroll">
-          <div id="category-tabs" class="category-tabs"></div>
-        </div>
-        <div id="phrase-list"></div>
+      <div class="cat-scroll">
+        <div id="category-tabs" class="category-tabs"></div>
       </div>
-
-      <!-- Quiz Mode -->
-      <div id="phrase-quiz-view" class="hidden">
-        <div class="quiz-card" id="quiz-card">
-          <div class="quiz-counter" id="quiz-counter">1 / 10</div>
-          <div class="quiz-prompt">次の日本語を英語で言ってみましょう</div>
-          <div class="quiz-ja" id="quiz-ja">-</div>
-          <div class="quiz-answer hidden" id="quiz-answer"></div>
-          <div class="quiz-example hidden" id="quiz-example"></div>
-        </div>
-        <div class="quiz-controls">
-          <button id="quiz-reveal-btn" class="btn-primary" style="width:100%">答えを見る</button>
-          <div class="quiz-rating hidden" id="quiz-rating">
-            <p>どのくらい言えましたか？</p>
-            <div class="rating-row">
-              <button class="rating-btn bad" data-score="0">😓<br>全然</button>
-              <button class="rating-btn ok" data-score="1">🤔<br>少し</button>
-              <button class="rating-btn good" data-score="2">😊<br>大体</button>
-              <button class="rating-btn great" data-score="3">🌟<br>完璧</button>
-            </div>
-          </div>
-        </div>
-        <button id="quiz-exit-btn" class="btn-secondary" style="width:100%;margin-top:12px">終了</button>
-      </div>
-
-      <!-- Speaking Mode -->
-      <div id="phrase-speaking-view" class="hidden">
-        <div class="sp-category-wrap">
-          <label>カテゴリー</label>
-          <select id="sp-category-select" class="sp-select"></select>
-        </div>
-        <div class="speaking-card">
-          <div id="sp-counter" class="sp-counter">1 / 10</div>
-          <div id="sp-phrase-en" class="sp-phrase-en">Hello!</div>
-          <div id="sp-phrase-ja" class="sp-phrase-ja">こんにちは！</div>
-          <div id="sp-phrase-example" class="sp-phrase-example"></div>
-        </div>
-        <div id="sp-result" class="sp-result-box hidden"></div>
-        <div class="sp-controls">
-          <button id="sp-listen-btn" class="btn-secondary">🔊 聞く</button>
-          <button id="sp-listen-slow-btn" class="btn-secondary">🐢 ゆっくり</button>
-          <button id="sp-record-btn" class="btn-shadow">🎙️ 発音</button>
-        </div>
-        <div class="sp-nav">
-          <button id="sp-prev-btn" class="btn-secondary">← 前</button>
-          <button id="sp-next-btn" class="btn-secondary">次 →</button>
-        </div>
-      </div>
-
+      <div id="phrase-list"></div>
     </div>
   </section>
 
   <!-- ===== PROGRESS TAB ===== -->
   <section id="tab-progress" class="tab-content">
     <div class="scroll-area">
-      <div class="section-heading">学習進捗</div>
 
-      <div class="progress-stats">
-        <div class="stat-card">
-          <div id="prog-dialogues" class="stat-value">0/0</div>
-          <div class="stat-label">会話完了</div>
-        </div>
-        <div class="stat-card">
-          <div id="prog-mastered" class="stat-value">0</div>
-          <div class="stat-label">習得済み</div>
-        </div>
-        <div class="stat-card">
-          <div id="prog-streak" class="stat-value">0</div>
-          <div class="stat-label">連続日数</div>
-        </div>
+      <!-- Hero metric: scenes -->
+      <div class="scenes-banner">
+        <div class="scenes-num" id="scenes-num">0</div>
+        <div class="scenes-label">回の会話を達成</div>
       </div>
 
-      <!-- SRS Mastery breakdown -->
-      <div class="srs-breakdown">
-        <div class="section-heading" style="margin-bottom:10px">習熟度</div>
-        <div id="srs-breakdown-bars"></div>
+      <!-- Can-do list -->
+      <div class="section-heading">できるようになったこと</div>
+      <p class="tab-intro">英語で「実際にできること」が増えていきます。</p>
+      <div id="cando-list" class="cando-list"></div>
+
+      <!-- Gentle streak (subordinated) -->
+      <div class="gentle-streak" id="gentle-streak">
+        <span class="gs-fire">🔥</span>
+        <span id="gs-text">今日が初日！</span>
       </div>
 
-      <div class="progress-bar-wrap">
-        <p>会話シナリオ 完了率</p>
-        <div class="progress-bar">
-          <div id="prog-bar-fill" class="progress-bar-fill" style="width:0%"></div>
-        </div>
-        <div id="prog-bar-label" class="progress-bar-label">0%</div>
-      </div>
-
-      <div class="prog-section">
-        <h3>完了した会話</h3>
-        <div id="prog-completed-list"></div>
-      </div>
-
-      <div class="prog-section">
-        <h3>お気に入りフレーズ</h3>
-        <div id="prog-fav-list"></div>
-      </div>
-
-      <button id="prog-reset-btn" class="btn-danger">学習データをリセット</button>
+      <button id="prog-reset-btn" class="btn-reset">学習データをリセット</button>
     </div>
   </section>
 
-  <!-- ===== SRS REVIEW OVERLAY ===== -->
-  <div id="srs-overlay" class="overlay hidden">
-    <div class="overlay-card">
-      <button id="srs-close-btn" class="overlay-close">✕</button>
-      <div class="srs-header">
-        <div class="srs-overlay-title">間隔反復復習</div>
-        <div id="srs-overlay-counter" class="srs-overlay-counter">1 / 10</div>
+  <!-- ===== ROLEPLAY PLAYER OVERLAY ===== -->
+  <div id="rp-overlay" class="overlay hidden">
+    <div class="rp-screen">
+      <div class="rp-topbar">
+        <button id="rp-close-btn" class="rp-close">✕</button>
+        <div class="rp-title" id="rp-title"></div>
+        <div class="rp-progress-text" id="rp-progress-text"></div>
       </div>
-      <div class="srs-progress-bar"><div id="srs-progress-fill" class="srs-progress-fill"></div></div>
-      <div class="srs-card-wrap">
-        <div class="srs-card-prompt">🇯🇵 英語で言ってみましょう</div>
-        <div id="srs-card-ja" class="srs-card-ja">-</div>
-        <div id="srs-card-answer" class="srs-card-answer hidden">
-          <div id="srs-card-en" class="srs-card-en"></div>
-          <div id="srs-card-example" class="srs-card-example"></div>
+      <div class="rp-progress-bar"><div id="rp-progress-fill" class="rp-progress-fill"></div></div>
+
+      <!-- Scene intro -->
+      <div id="rp-intro" class="rp-intro">
+        <div class="rp-intro-icon" id="rp-intro-icon">☕</div>
+        <div class="rp-intro-title" id="rp-intro-title"></div>
+        <div class="rp-intro-scene" id="rp-intro-scene"></div>
+        <button id="rp-intro-start" class="btn-primary" style="width:100%;margin-top:20px">スタート 🎙️</button>
+        <p class="rp-intro-note">🔊 音が出ます。マイクの使用を許可してください。</p>
+      </div>
+
+      <!-- Conversation flow -->
+      <div id="rp-flow" class="rp-flow hidden">
+        <div id="rp-chat" class="rp-chat"></div>
+
+        <!-- Your turn panel -->
+        <div id="rp-your-turn" class="rp-your-turn hidden">
+          <div class="rp-prompt-label">あなたの番 · 日本語で言いたいこと</div>
+          <div class="rp-prompt-ja" id="rp-prompt-ja"></div>
+          <div class="rp-hint hidden" id="rp-hint"></div>
+          <div id="rp-recog-result" class="rp-recog-result hidden"></div>
+          <button id="rp-mic-btn" class="rp-mic-btn">
+            <span class="rp-mic-icon">🎙️</span>
+            <span id="rp-mic-label">タップして話す</span>
+          </button>
+          <div class="rp-your-actions">
+            <button id="rp-hint-btn" class="btn-ghost">💡 ヒント</button>
+            <button id="rp-listen-btn" class="btn-ghost">🔊 お手本</button>
+            <button id="rp-skip-btn" class="btn-ghost">スキップ →</button>
+          </div>
+        </div>
+
+        <!-- NPC turn indicator -->
+        <div id="rp-npc-turn" class="rp-npc-turn hidden">
+          <button id="rp-npc-replay" class="btn-ghost">🔊 もう一度聞く</button>
+          <button id="rp-npc-next" class="btn-primary">続ける →</button>
         </div>
       </div>
-      <button id="srs-reveal-btn" class="btn-primary" style="width:100%;margin-bottom:12px">答えを見る</button>
-      <div id="srs-rating" class="quiz-rating hidden">
-        <p>どのくらい言えましたか？</p>
-        <div class="rating-row">
-          <button class="rating-btn bad" data-score="0">😓<br>全然</button>
-          <button class="rating-btn ok" data-score="1">🤔<br>少し</button>
-          <button class="rating-btn good" data-score="2">😊<br>大体</button>
-          <button class="rating-btn great" data-score="3">🌟<br>完璧</button>
-        </div>
-      </div>
-      <div id="srs-complete" class="srs-complete hidden">
-        <div class="srs-complete-icon">🎉</div>
-        <div class="srs-complete-title">復習完了！</div>
-        <div id="srs-complete-msg" class="srs-complete-msg"></div>
-        <button id="srs-done-btn" class="btn-primary" style="width:100%;margin-top:16px">ホームに戻る</button>
+
+      <!-- Completion celebration -->
+      <div id="rp-complete" class="rp-complete hidden">
+        <div class="confetti" id="confetti"></div>
+        <div class="rp-complete-icon">🎉</div>
+        <div class="rp-complete-msg" id="rp-complete-msg"></div>
+        <div class="rp-cando-unlock" id="rp-cando-unlock"></div>
+        <div class="rp-complete-stats" id="rp-complete-stats"></div>
+        <button id="rp-again-btn" class="btn-secondary" style="width:100%;margin-bottom:10px">もう一度 🔁</button>
+        <button id="rp-done-btn" class="btn-primary" style="width:100%">完了 ✓</button>
       </div>
     </div>
   </div>
 
   <!-- Tab Navigation -->
   <nav class="tab-nav">
-    <button class="tab-btn active" data-tab="home">
-      <span class="tab-icon">🏠</span>
-      <span>ホーム</span>
-    </button>
-    <button class="tab-btn" data-tab="conversation">
-      <span class="tab-icon">💬</span>
+    <button class="tab-btn active" data-tab="talk">
+      <span class="tab-icon">🎙️</span>
       <span>会話</span>
     </button>
     <button class="tab-btn" data-tab="phrases">
@@ -284,8 +160,8 @@
       <span>フレーズ</span>
     </button>
     <button class="tab-btn" data-tab="progress">
-      <span class="tab-icon">📊</span>
-      <span>進捗</span>
+      <span class="tab-icon">🏅</span>
+      <span>できること</span>
     </button>
   </nav>
 

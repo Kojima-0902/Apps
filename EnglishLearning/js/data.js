@@ -284,11 +284,209 @@ const BIZ_DIALOGUES = [
   },
 ];
 
+// =========================================================
+// INTERACTIVE ROLEPLAYS (音声会話)
+// role: 'npc' = AIが話す / 'you' = あなたが声で返す
+// you turn: ja=言いたいこと, en=お手本, accept=許容される他の言い方
+// =========================================================
+const ROLEPLAYS = [
+  {
+    id: 'rp_greet',
+    title: 'はじめての挨拶',
+    icon: '👋',
+    level: 'A1',
+    scene: 'パーティーで初対面の人に話しかけられました。',
+    canDo: '初対面の人と挨拶して自己紹介できる',
+    npcName: 'Emma',
+    turns: [
+      { role: 'npc', en: "Hi there! I'm Emma. Nice to meet you.", ja: "こんにちは！エマです。はじめまして。" },
+      { role: 'you', ja: "はじめまして。私はユウキです。", en: "Nice to meet you too. I'm Yuki.", accept: ["nice to meet you too im yuki", "nice to meet you i am yuki", "im yuki nice to meet you"] },
+      { role: 'npc', en: "Where are you from, Yuki?", ja: "ユウキ、どこの出身ですか？" },
+      { role: 'you', ja: "日本出身です。", en: "I'm from Japan.", accept: ["im from japan", "i am from japan", "from japan"] },
+      { role: 'npc', en: "Oh, nice! What do you do?", ja: "いいですね！お仕事は何ですか？" },
+      { role: 'you', ja: "エンジニアとして働いています。", en: "I work as an engineer.", accept: ["i work as an engineer", "im an engineer", "i am an engineer"] },
+      { role: 'npc', en: "That's cool! It was great talking to you.", ja: "素敵ですね！お話できて良かったです。" },
+      { role: 'you', ja: "私もです。またね！", en: "You too. See you later!", accept: ["you too see you later", "me too see you", "you too see you"] },
+    ],
+  },
+  {
+    id: 'rp_cafe',
+    title: 'カフェで注文',
+    icon: '☕',
+    level: 'A1',
+    scene: 'お気に入りのカフェに来ました。店員さんが注文を取りに来ます。',
+    canDo: 'カフェで飲み物と食べ物を注文できる',
+    npcName: 'Barista',
+    turns: [
+      { role: 'npc', en: "Hi! Welcome. What can I get for you?", ja: "こんにちは！いらっしゃいませ。ご注文は？" },
+      { role: 'you', ja: "コーヒーを1つください。", en: "Can I have a coffee, please?", accept: ["can i have a coffee please", "can i get a coffee", "a coffee please", "i'd like a coffee"] },
+      { role: 'npc', en: "Sure! Hot or iced?", ja: "かしこまりました！ホットとアイス、どちらにしますか？" },
+      { role: 'you', ja: "ホットでお願いします。", en: "Hot, please.", accept: ["hot please", "hot one please", "a hot one please"] },
+      { role: 'npc', en: "Got it. Anything else?", ja: "承知しました。他にご注文は？" },
+      { role: 'you', ja: "チョコレートケーキもください。", en: "A chocolate cake, too, please.", accept: ["a chocolate cake too please", "chocolate cake please", "and a chocolate cake", "a chocolate cake please"] },
+      { role: 'npc', en: "Great choice! That'll be 8 dollars.", ja: "良い選択ですね！8ドルになります。" },
+      { role: 'you', ja: "はい、どうぞ。ありがとう！", en: "Here you go. Thank you!", accept: ["here you go thank you", "here you are thanks", "here you go thanks"] },
+    ],
+  },
+  {
+    id: 'rp_restaurant',
+    title: 'レストランで食事',
+    icon: '🍽️',
+    level: 'A2',
+    scene: '友達とレストランに来ました。ウェイターが席まで案内してくれます。',
+    canDo: 'レストランで席を頼み、料理を注文できる',
+    npcName: 'Waiter',
+    turns: [
+      { role: 'npc', en: "Good evening! How many people?", ja: "こんばんは！何名様ですか？" },
+      { role: 'you', ja: "2名でお願いします。", en: "A table for two, please.", accept: ["a table for two please", "two please", "table for two", "for two please"] },
+      { role: 'npc', en: "Right this way. Here's the menu.", ja: "こちらへどうぞ。メニューです。" },
+      { role: 'you', ja: "おすすめは何ですか？", en: "What do you recommend?", accept: ["what do you recommend", "whats your recommendation", "any recommendations"] },
+      { role: 'npc', en: "Our pasta is very popular today.", ja: "本日はパスタが大人気です。" },
+      { role: 'you', ja: "では、パスタを注文します。", en: "I'd like to order the pasta, then.", accept: ["id like to order the pasta", "i'll have the pasta", "ill take the pasta", "the pasta please", "i would like the pasta"] },
+      { role: 'npc', en: "Excellent choice. Anything to drink?", ja: "素晴らしい選択です。お飲み物は？" },
+      { role: 'you', ja: "お水をいただけますか？", en: "Could I have some water?", accept: ["could i have some water", "can i have water", "some water please", "water please"] },
+    ],
+  },
+  {
+    id: 'rp_directions',
+    title: '道をたずねる',
+    icon: '🗺️',
+    level: 'A2',
+    scene: '旅行中、駅への行き方がわからなくなりました。通りすがりの人に聞いてみましょう。',
+    canDo: '道を尋ねて行き方を理解できる',
+    npcName: 'Local',
+    turns: [
+      { role: 'you', ja: "すみません！駅はどこですか？", en: "Excuse me! Where is the station?", accept: ["excuse me where is the station", "where is the station", "wheres the station", "excuse me wheres the station"] },
+      { role: 'npc', en: "Go straight and turn left at the corner.", ja: "まっすぐ行って、角を左に曲がってください。" },
+      { role: 'you', ja: "ここからどのくらいですか？", en: "How far is it from here?", accept: ["how far is it from here", "how far is it", "is it far", "how far"] },
+      { role: 'npc', en: "It's about a five-minute walk.", ja: "歩いて5分くらいです。" },
+      { role: 'you', ja: "ありがとうございます！とても助かりました。", en: "Thank you so much! You're very helpful.", accept: ["thank you so much youre very helpful", "thank you so much", "thanks a lot youre very helpful", "thank you very much"] },
+      { role: 'npc', en: "No problem! Have a great day!", ja: "どういたしまして！良い一日を！" },
+      { role: 'you', ja: "あなたもね！", en: "You too!", accept: ["you too", "you to", "same to you"] },
+    ],
+  },
+  {
+    id: 'rp_smalltalk',
+    title: '同僚と雑談',
+    icon: '💬',
+    level: 'A2',
+    scene: '月曜の朝、オフィスで同僚に話しかけられました。',
+    canDo: '職場で軽い雑談ができる',
+    npcName: 'Mike',
+    turns: [
+      { role: 'npc', en: "Morning! How was your weekend?", ja: "おはよう！週末はどうだった？" },
+      { role: 'you', ja: "とても良かったよ。映画を見に行ったんだ。", en: "It was great. I went to the movies.", accept: ["it was great i went to the movies", "it was great i went to the movie", "great i went to the movies", "it was good i went to the movies"] },
+      { role: 'npc', en: "Nice! What did you see?", ja: "いいね！何を見たの？" },
+      { role: 'you', ja: "新しいアクション映画だよ。すごく面白かった。", en: "A new action movie. It was really fun.", accept: ["a new action movie it was really fun", "a new action movie it was fun", "new action movie it was really fun"] },
+      { role: 'npc', en: "Sounds awesome. I should check it out.", ja: "面白そう。僕も見てみようかな。" },
+      { role: 'you', ja: "ぜひ！おすすめだよ。", en: "You should! I recommend it.", accept: ["you should i recommend it", "you should i recommend", "definitely i recommend it"] },
+    ],
+  },
+  {
+    id: 'rp_shopping',
+    title: '買い物をする',
+    icon: '🛍️',
+    level: 'A2',
+    scene: '洋服屋さんで気になるジャケットを見つけました。',
+    canDo: '店で値段やサイズを聞いて買い物できる',
+    npcName: 'Clerk',
+    turns: [
+      { role: 'npc', en: "Hi! Can I help you find anything?", ja: "こんにちは！何かお探しですか？" },
+      { role: 'you', ja: "このジャケットはいくらですか？", en: "How much is this jacket?", accept: ["how much is this jacket", "hows much is this jacket", "how much is the jacket", "whats the price of this jacket"] },
+      { role: 'npc', en: "It's 50 dollars. It's on sale!", ja: "50ドルです。セール中ですよ！" },
+      { role: 'you', ja: "Mサイズはありますか？", en: "Do you have it in medium?", accept: ["do you have it in medium", "do you have a medium", "is there a medium", "do you have this in medium"] },
+      { role: 'npc', en: "Yes, we do. Would you like to try it on?", ja: "はい、ございます。試着なさいますか？" },
+      { role: 'you', ja: "はい、試着できますか？", en: "Yes, can I try it on?", accept: ["yes can i try it on", "can i try it on", "yes id like to try it on", "yes please can i try it on"] },
+      { role: 'npc', en: "Of course! The fitting room is over there.", ja: "もちろんです！試着室はあちらです。" },
+      { role: 'you', ja: "ぴったりです。これにします！", en: "It fits perfectly. I'll take it!", accept: ["it fits perfectly ill take it", "it fits ill take it", "perfect ill take it", "it fits perfectly i will take it"] },
+    ],
+  },
+  {
+    id: 'rp_meeting',
+    title: '会議で発言する',
+    icon: '🤝',
+    level: 'B1',
+    scene: 'チーム会議。あなたの意見を求められています。',
+    canDo: '会議で自分の意見を英語で言える',
+    npcName: 'Manager',
+    turns: [
+      { role: 'npc', en: "So, what do you think about this plan?", ja: "では、この計画についてどう思いますか？" },
+      { role: 'you', ja: "良い考えだと思います。", en: "I think it's a good idea.", accept: ["i think its a good idea", "i think it is a good idea", "its a good idea", "i think thats a good idea"] },
+      { role: 'npc', en: "Great. Do you have any concerns?", ja: "良いですね。何か懸念点はありますか？" },
+      { role: 'you', ja: "予算について心配しています。", en: "I'm worried about the budget.", accept: ["im worried about the budget", "i am worried about the budget", "im concerned about the budget", "my concern is the budget"] },
+      { role: 'npc', en: "Good point. Let's discuss that.", ja: "良い指摘です。それについて話しましょう。" },
+      { role: 'you', ja: "もう少し詳しく説明していただけますか？", en: "Could you elaborate on that?", accept: ["could you elaborate on that", "can you elaborate", "could you explain more", "can you tell me more"] },
+      { role: 'npc', en: "Sure. Let me share the numbers.", ja: "もちろん。数字を共有しますね。" },
+      { role: 'you', ja: "ありがとうございます。賛成です。", en: "Thank you. I agree.", accept: ["thank you i agree", "thanks i agree", "thank you i agree with you"] },
+    ],
+  },
+  {
+    id: 'rp_hotel',
+    title: 'ホテルでチェックイン',
+    icon: '🏨',
+    level: 'A2',
+    scene: '旅行先のホテルに到着しました。フロントでチェックインします。',
+    canDo: 'ホテルでチェックインして質問できる',
+    npcName: 'Receptionist',
+    turns: [
+      { role: 'npc', en: "Good evening! Do you have a reservation?", ja: "こんばんは！ご予約はございますか？" },
+      { role: 'you', ja: "はい、予約があります。田中です。", en: "Yes, I have a reservation under Tanaka.", accept: ["yes i have a reservation under tanaka", "yes i have a reservation tanaka", "i have a reservation under tanaka", "yes under tanaka"] },
+      { role: 'npc', en: "Welcome, Mr. Tanaka. Two nights, correct?", ja: "ようこそ、田中様。2泊で間違いないですか？" },
+      { role: 'you', ja: "はい、そうです。Wi-Fiはありますか？", en: "Yes, that's right. Is there Wi-Fi?", accept: ["yes thats right is there wifi", "yes is there wifi", "thats right is there wifi", "yes correct is there wifi"] },
+      { role: 'npc', en: "Yes, it's free. Here's your key card.", ja: "はい、無料です。こちらがキーカードです。" },
+      { role: 'you', ja: "ありがとう。朝食は何時ですか？", en: "Thanks. What time is breakfast?", accept: ["thanks what time is breakfast", "thank you what time is breakfast", "what time is breakfast"] },
+      { role: 'npc', en: "Breakfast is from 7 to 10. Enjoy your stay!", ja: "朝食は7時から10時です。良いご滞在を！" },
+      { role: 'you', ja: "ありがとう！", en: "Thank you!", accept: ["thank you", "thanks", "thank you so much"] },
+    ],
+  },
+];
+
+// can-do一覧 (現実のできること)
+function getCanDoList() {
+  return ROLEPLAYS.map(r => ({ id: r.id, label: r.canDo, icon: r.icon, done: !!loadCanDo()[r.id] }));
+}
+
 // ---- Storage Keys ----
 const PROGRESS_KEY = 'english_app_progress';
 const FAVORITES_KEY = 'english_app_favorites';
 const SRS_KEY = 'english_app_srs';
 const STAMPS_KEY = 'english_app_stamps';
+const CANDO_KEY = 'english_app_cando';
+const SCENES_KEY = 'english_app_scenes'; // total conversation scenes completed
+
+function loadCanDo() {
+  try { return JSON.parse(localStorage.getItem(CANDO_KEY)) || {}; } catch { return {}; }
+}
+function saveCanDo(data) { localStorage.setItem(CANDO_KEY, JSON.stringify(data)); }
+function unlockCanDo(id) {
+  const c = loadCanDo();
+  const isNew = !c[id];
+  c[id] = Date.now();
+  saveCanDo(c);
+  return isNew;
+}
+
+function getScenesCount() {
+  try { return parseInt(localStorage.getItem(SCENES_KEY)) || 0; } catch { return 0; }
+}
+function addSceneCount() {
+  const n = getScenesCount() + 1;
+  localStorage.setItem(SCENES_KEY, n);
+  return n;
+}
+
+// 励ましメッセージ (アイデンティティ・ベース / 即時祝福)
+const CELEBRATIONS = [
+  "今日もSpeakerとして話せた！ 🎉",
+  "ネイティブみたいだった！ ⭐",
+  "会話が成立したね！その調子！ 💪",
+  "昨日より自然に話せてる！ 🌟",
+  "あなたは英語を話す人です！ 🔥",
+  "完璧なやりとりだった！ 👏",
+];
+function randomCelebration() {
+  return CELEBRATIONS[Math.floor(Math.random() * CELEBRATIONS.length)];
+}
 
 // SRS levels: 0=New, 1=Learning(1d), 2=Young(3d), 3=Mature(7d), 4=Mastered(21d)
 const SRS_INTERVALS = [0, 1, 3, 7, 21];
