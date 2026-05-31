@@ -284,10 +284,24 @@ function recordYourTurn() {
     return;
   }
 
+  // Create recognition inside the user gesture context (no setTimeout) so iOS allows it
+  let r;
+  try {
+    r = new SR();
+  } catch (e) {
+    showMicError(`マイクを起動できませんでした: ${e.message} — ⌨️ 入力ボタンをご利用ください。`);
+    return;
+  }
+  recognition = r;
+  r.lang = 'en-US';
+  r.interimResults = true;
+  r.continuous = false;
+  r.maxAlternatives = 1;
+
   const resultEl = document.getElementById('rp-recog-result');
   resultEl.classList.remove('hidden');
   resultEl.className = 'rp-recog-result';
-  resultEl.innerHTML = '<div class="recog-interim">準備中...</div>';
+  resultEl.innerHTML = '<div class="recog-interim">🎙️ 今すぐ話してください！</div>';
   setMicRecording(true);
 
   let latestSpoken = '';
@@ -299,69 +313,55 @@ function recordYourTurn() {
     setMicRecording(false);
   };
 
-  // iOS: wait 300ms after TTS cancel for audio session to release
-  setTimeout(() => {
-    if (!isRecording) return; // user tapped stop during the wait
-
-    const r = new SR();
-    recognition = r;
-    r.lang = 'en-US';
-    r.interimResults = true;
-    r.continuous = false;
-    r.maxAlternatives = 1;
-
-    resultEl.innerHTML = '<div class="recog-interim">🎙️ 今すぐ話してください！</div>';
-
-    // Safety net: if onend never fires (iOS bug), unfreeze after 8s
-    safetyTimer = setTimeout(() => {
-      stopRecognition();
-      setMicRecording(false);
-      if (!latestSpoken && !hadError) {
-        showMicError('タイムアウトしました。もう一度タップして、すぐに話してください。');
-      }
-    }, 8000);
-
-    r.onresult = event => {
-      let interim = '', final = '';
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const t = event.results[i][0].transcript;
-        if (event.results[i].isFinal) final += t;
-        else interim += t;
-      }
-      latestSpoken = final || interim;
-      if (latestSpoken) resultEl.innerHTML = `<div class="recog-interim">「${latestSpoken}」</div>`;
-    };
-
-    r.onerror = event => {
-      if (event.error === 'aborted') return;
-      hadError = true;
-      const msgs = {
-        'not-allowed':
-          'マイクが許可されていません。設定 → Safari → マイク → このサイトを「許可」に変更してください。',
-        'no-speech':           '声が聞こえませんでした。大きな声でどうぞ 🎙️',
-        'network':             'ネットワークエラーです。Wi-Fi / 接続を確認してください。',
-        'audio-capture':       'マイクが使えません。他のアプリが使用中の可能性があります。',
-        'service-not-allowed': 'ブラウザの設定でマイクが無効です。',
-      };
-      showMicError(msgs[event.error] ?? `認識エラー: ${event.error}`);
-    };
-
-    r.onend = () => {
-      cleanup();
-      if (latestSpoken) {
-        evaluateYourTurn(turn, latestSpoken);
-      } else if (!hadError) {
-        showMicError('聞き取れませんでした。もう一度試すか、⌨️ 入力でタイプしてください。');
-      }
-    };
-
-    try {
-      r.start();
-    } catch (e) {
-      cleanup();
-      showMicError('マイクを起動できませんでした。ページを再読み込みして試してください。');
+  // Safety net: if onend never fires (iOS bug), unfreeze after 8s
+  safetyTimer = setTimeout(() => {
+    stopRecognition();
+    setMicRecording(false);
+    if (!latestSpoken && !hadError) {
+      showMicError('タイムアウトしました。もう一度タップして、すぐに話してください。');
     }
-  }, 300);
+  }, 8000);
+
+  r.onresult = event => {
+    let interim = '', final = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const t = event.results[i][0].transcript;
+      if (event.results[i].isFinal) final += t;
+      else interim += t;
+    }
+    latestSpoken = final || interim;
+    if (latestSpoken) resultEl.innerHTML = `<div class="recog-interim">「${latestSpoken}」</div>`;
+  };
+
+  r.onerror = event => {
+    if (event.error === 'aborted') return;
+    hadError = true;
+    const msgs = {
+      'not-allowed':
+        'マイクが許可されていません。設定 → Safari → マイク → このサイトを「許可」に変更してください。',
+      'no-speech':           '声が聞こえませんでした。大きな声でどうぞ 🎙️',
+      'network':             'ネットワークエラーです。Wi-Fi / 接続を確認してください。',
+      'audio-capture':       'マイクが使えません。他のアプリが使用中の可能性があります。',
+      'service-not-allowed': 'ブラウザの設定でマイクが無効です。',
+    };
+    showMicError(msgs[event.error] ?? `認識エラー: ${event.error}`);
+  };
+
+  r.onend = () => {
+    cleanup();
+    if (latestSpoken) {
+      evaluateYourTurn(turn, latestSpoken);
+    } else if (!hadError) {
+      showMicError('聞き取れませんでした。もう一度試すか、⌨️ 入力でタイプしてください。');
+    }
+  };
+
+  try {
+    r.start();
+  } catch (e) {
+    cleanup();
+    showMicError(`マイクを起動できませんでした: ${e.message}`);
+  }
 }
 
 function evaluateYourTurn(turn, spoken) {
