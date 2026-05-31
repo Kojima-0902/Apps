@@ -9,71 +9,26 @@ let currentCategory = 'greetings';
 let recognition = null;
 let todaysRoleplay = null;
 
-// ====== Speech Synthesis (TTS) ======
-let audioUnlocked = false;
-let ttsKeepAlive = null;
-
-function unlockAudio() {
-  if (audioUnlocked || !('speechSynthesis' in window)) return;
-  audioUnlocked = true;
-  // iOS requires TTS to be triggered within a user gesture at least once
-  const u = new SpeechSynthesisUtterance('');
-  u.volume = 0;
-  window.speechSynthesis.speak(u);
-  window.speechSynthesis.cancel();
-}
-
-function startTTSKeepAlive() {
-  stopTTSKeepAlive();
-  // iOS Safari pauses speechSynthesis after ~15s; pause+resume prevents it
-  ttsKeepAlive = setInterval(() => {
-    if (window.speechSynthesis.speaking) {
-      window.speechSynthesis.pause();
-      window.speechSynthesis.resume();
-    }
-  }, 5000);
-}
-
-function stopTTSKeepAlive() {
-  if (ttsKeepAlive) { clearInterval(ttsKeepAlive); ttsKeepAlive = null; }
-}
-
-function pickVoice() {
-  const voices = window.speechSynthesis.getVoices();
-  return voices.find(x => x.lang.startsWith('en') && /female|samantha|karen|moira|tessa|zira/i.test(x.name))
-      || voices.find(x => x.lang === 'en-US')
-      || voices.find(x => x.lang.startsWith('en'));
-}
-
+// ====== Speech Synthesis (TTS) — same simple pattern as TranslatorApp ======
 function speak(text, rate = 0.9, onEnd) {
   if (!('speechSynthesis' in window)) { if (onEnd) onEnd(); return; }
   window.speechSynthesis.cancel();
 
-  const doSpeak = () => {
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'en-US';
-    u.rate = rate;
-    u.pitch = 1;
-    u.volume = 1;
-    const v = pickVoice();
-    if (v) u.voice = v;
-    u.onend = () => { stopTTSKeepAlive(); if (onEnd) onEnd(); };
-    u.onerror = () => { stopTTSKeepAlive(); if (onEnd) onEnd(); };
-    startTTSKeepAlive();
-    window.speechSynthesis.speak(u);
-  };
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'en-US';
+  u.rate = rate;
+  u.pitch = 1;
+  u.volume = 1;
+  u.onend = () => { if (onEnd) onEnd(); };
+  u.onerror = () => { if (onEnd) onEnd(); };
 
-  // Wait for voices if not yet loaded (async on mobile)
-  if (window.speechSynthesis.getVoices().length > 0) {
-    setTimeout(doSpeak, 50); // small delay ensures cancel() settles
-  } else {
-    const onReady = () => {
-      window.speechSynthesis.removeEventListener('voiceschanged', onReady);
-      setTimeout(doSpeak, 50);
-    };
-    window.speechSynthesis.addEventListener('voiceschanged', onReady);
-    setTimeout(doSpeak, 500); // fallback if event never fires
-  }
+  const voices = window.speechSynthesis.getVoices();
+  const v = voices.find(x => x.lang.startsWith('en') && /samantha|karen|moira|tessa|zira/i.test(x.name))
+         || voices.find(x => x.lang === 'en-US')
+         || voices.find(x => x.lang.startsWith('en'));
+  if (v) u.voice = v;
+
+  window.speechSynthesis.speak(u);
 }
 
 // ====== Speech Recognition (STT) — same pattern as TranslatorApp ======
@@ -239,7 +194,6 @@ function startRoleplay(id) {
 
 function closeRoleplay() {
   window.speechSynthesis.cancel();
-  stopTTSKeepAlive();
   stopRecognition();
   setMicRecording(false);
   document.getElementById('rp-overlay').classList.add('hidden');
@@ -365,9 +319,8 @@ function recordYourTurn() {
   const turn = rp?.data?.turns[rp.turnIdx];
   if (!turn) return;
 
-  // Stop TTS before mic (same as TranslatorApp)
+  // Stop TTS before mic
   window.speechSynthesis.cancel();
-  stopTTSKeepAlive();
 
   const resultEl = document.getElementById('rp-recog-result');
   resultEl.classList.remove('hidden');
@@ -572,12 +525,11 @@ function renderProgress() {
 
 // ====== INIT ======
 document.addEventListener('DOMContentLoaded', () => {
-  // Preload voices list
-  if ('speechSynthesis' in window) window.speechSynthesis.getVoices();
-
-  // Unlock audio on first user interaction (required by iOS)
-  document.addEventListener('touchstart', unlockAudio, { once: true });
-  document.addEventListener('click', unlockAudio, { once: true });
+  // Preload voices list (async on mobile)
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.getVoices();
+    window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+  }
 
   initTabs();
   initPhrasesTab();
