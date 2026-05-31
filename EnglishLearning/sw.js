@@ -1,15 +1,8 @@
-const CACHE = 'english-app-v7';
-const ASSETS = [
-  './',
-  './index.html',
-  './css/style.css',
-  './js/data.js',
-  './js/app.js',
-  './manifest.json',
-];
+const CACHE = 'english-app-v8';
+const STATIC = ['./index.html', './manifest.json'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(STATIC)));
   self.skipWaiting();
 });
 
@@ -21,7 +14,19 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  e.respondWith(
-    caches.match(e.request).then(cached => cached || fetch(e.request))
-  );
+  const url = e.request.url;
+  // JS and CSS: network-first so updates always reach the user
+  if (url.match(/\.(js|css)(\?|$)/)) {
+    e.respondWith(
+      fetch(e.request).then(r => {
+        const clone = r.clone();
+        caches.open(CACHE).then(c => c.put(e.request, clone));
+        return r;
+      }).catch(() => caches.match(e.request))
+    );
+  } else {
+    e.respondWith(
+      caches.match(e.request).then(cached => cached || fetch(e.request))
+    );
+  }
 });

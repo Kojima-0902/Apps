@@ -76,16 +76,53 @@ function speak(text, rate = 0.9, onEnd) {
   }
 }
 
-// ====== Speech Recognition (STT) ======
-function initRecognition() {
+// ====== Speech Recognition (STT) — same pattern as TranslatorApp ======
+function startRecognition(onResult, onEnd) {
+  // abort any running instance first (matches TranslatorApp pattern)
+  if (recognition) { try { recognition.abort(); } catch (_) {} recognition = null; }
+
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) return null;
+  if (!SR) return false;
+
   const r = new SR();
+  recognition = r;
   r.lang = 'en-US';
+  r.interimResults = true;
   r.continuous = false;
-  r.interimResults = false; // false is more reliable on iOS Safari
-  r.maxAlternatives = 3;
-  return r;
+  r.maxAlternatives = 1;
+
+  r.onresult = event => {
+    let interim = '', final = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const t = event.results[i][0].transcript;
+      if (event.results[i].isFinal) final += t;
+      else interim += t;
+    }
+    onResult(final || interim, !!final);
+  };
+
+  r.onerror = event => {
+    if (event.error !== 'aborted') {
+      const msgs = {
+        'not-allowed':         'マイクの許可が必要です。ブラウザの設定で許可してください。',
+        'no-speech':           '声が聞こえませんでした。大きな声でどうぞ 🎙️',
+        'network':             'ネットワークエラーです。Wi-Fi / 接続を確認してください。',
+        'audio-capture':       'マイクが使えません。他のアプリが使用中の可能性があります。',
+        'service-not-allowed': 'ブラウザの設定でマイクが無効になっています。',
+      };
+      showMicError(msgs[event.error] ?? `認識エラー: ${event.error}`);
+    }
+    onEnd();
+  };
+
+  r.onend = () => onEnd();
+
+  r.start();
+  return true;
+}
+
+function stopRecognition() {
+  if (recognition) { try { recognition.abort(); } catch (_) {} recognition = null; }
 }
 
 // ====== Matching ======
@@ -202,7 +239,9 @@ function startRoleplay(id) {
 
 function closeRoleplay() {
   window.speechSynthesis.cancel();
-  if (recognition) { try { recognition.stop(); } catch (_) {} }
+  stopTTSKeepAlive();
+  stopRecognition();
+  setMicRecording(false);
   document.getElementById('rp-overlay').classList.add('hidden');
   document.body.style.overflow = '';
   rp = null;
@@ -290,16 +329,20 @@ function presentYourTurn(turn) {
 }
 
 let isRecording = false;
-let recogTimeout = null;
 
-function resetMicBtn() {
-  isRecording = false;
-  if (recogTimeout) { clearTimeout(recogTimeout); recogTimeout = null; }
+function setMicRecording(active) {
+  isRecording = active;
   const btn = document.getElementById('rp-mic-btn');
   if (!btn) return;
-  btn.classList.remove('recording');
-  document.getElementById('rp-mic-label').textContent = 'タップして話す';
-  document.getElementById('rp-mic-icon').textContent = '🎙️';
+  if (active) {
+    btn.classList.add('recording');
+    document.getElementById('rp-mic-label').textContent = 'もう一度タップで停止';
+    document.getElementById('rp-mic-icon').textContent = '🔴';
+  } else {
+    btn.classList.remove('recording');
+    document.getElementById('rp-mic-label').textContent = 'タップして話す';
+    document.getElementById('rp-mic-icon').textContent = '🎙️';
+  }
 }
 
 function showMicError(msg) {
@@ -309,87 +352,50 @@ function showMicError(msg) {
   resultEl.innerHTML = `
     <div class="recog-badge" style="color:var(--ok)">⚠️ ${msg}</div>
     <button class="btn-ghost" style="margin-top:10px;width:100%;font-size:1rem" id="retry-mic-btn">🎙️ もう一度試す</button>`;
-  document.getElementById('retry-mic-btn')?.addEventListener('click', () => recordYourTurn(0));
+  document.getElementById('retry-mic-btn')?.addEventListener('click', recordYourTurn);
 }
 
-function recordYourTurn(retryCount = 0) {
+function recordYourTurn() {
   if (isRecording) {
-    if (recognition) { try { recognition.stop(); } catch (_) {} }
+    stopRecognition();
+    setMicRecording(false);
     return;
   }
 
   const turn = rp?.data?.turns[rp.turnIdx];
   if (!turn) return;
 
-  // Stop TTS — mic and TTS can interfere
+  // Stop TTS before mic (same as TranslatorApp)
   window.speechSynthesis.cancel();
   stopTTSKeepAlive();
 
-  const r = initRecognition();
-  recognition = r;
-
-  if (!r) {
-    showMicError('このブラウザは音声認識に未対応です。Safari / Chrome をお使いください。');
-    document.getElementById('rp-hint').classList.remove('hidden');
-    return;
-  }
-
-  isRecording = true;
-  const btn = document.getElementById('rp-mic-btn');
   const resultEl = document.getElementById('rp-recog-result');
-  btn.classList.add('recording');
-  document.getElementById('rp-mic-label').textContent = 'もう一度タップで停止';
-  document.getElementById('rp-mic-icon').textContent = '🔴';
   resultEl.classList.remove('hidden');
   resultEl.className = 'rp-recog-result';
-  resultEl.innerHTML = `<div class="recog-interim">${retryCount > 0 ? 'もう一度聞いています...' : '聞いています...'}</div>`;
+  resultEl.innerHTML = '<div class="recog-interim">聞いています...</div>';
 
-  let spoken = '';
-  let gotAnyResult = false;
+  setMicRecording(true);
+  let latestSpoken = '';
 
-  // Hard stop after 12 seconds so user isn't stuck
-  recogTimeout = setTimeout(() => {
-    if (r) { try { r.stop(); } catch (_) {} }
-  }, 12000);
-
-  r.onresult = e => {
-    gotAnyResult = true;
-    // With interimResults:false, all results here are final
-    for (let i = e.resultIndex; i < e.results.length; i++) {
-      spoken += e.results[i][0].transcript + ' ';
+  const started = startRecognition(
+    (text, isFinal) => {
+      latestSpoken = text;
+      resultEl.innerHTML = `<div class="recog-interim">「${text}」</div>`;
+    },
+    () => {
+      // onEnd — same as TranslatorApp pattern
+      setMicRecording(false);
+      if (latestSpoken) {
+        evaluateYourTurn(turn, latestSpoken);
+      } else {
+        showMicError('聞き取れませんでした。もう一度試すか、⌨️ 入力でタイプしてください。');
+      }
     }
-    spoken = spoken.trim();
-    if (spoken) resultEl.innerHTML = `<div class="recog-interim">「${spoken}」</div>`;
-  };
+  );
 
-  r.onend = () => {
-    resetMicBtn();
-    if (spoken) {
-      evaluateYourTurn(turn, spoken);
-    } else {
-      // Show error with raw code so we can diagnose what's happening
-      showMicError('聞き取れませんでした。もう一度試すか、⌨️ 入力ボタンでタイプしてください。');
-    }
-  };
-
-  r.onerror = ev => {
-    resetMicBtn();
-    const msgs = {
-      'not-allowed':         'マイクの許可が必要です。ブラウザの設定で許可してください。',
-      'no-speech':           '声が聞こえませんでした。大きな声でどうぞ 🎙️',
-      'network':             'ネットワークエラーです。Wi-Fi / 接続を確認してください。',
-      'audio-capture':       'マイクが使えません。他のアプリがマイクを使用中の可能性があります。',
-      'service-not-allowed': 'ブラウザの設定でマイクが無効になっています。',
-      'aborted':             '録音が中断されました。もう一度試してください。',
-    };
-    showMicError(msgs[ev.error] ?? `認識エラー: ${ev.error}`);
-  };
-
-  try {
-    r.start();
-  } catch (e) {
-    resetMicBtn();
-    showMicError('マイクを起動できませんでした。再度タップしてください。');
+  if (!started) {
+    setMicRecording(false);
+    showMicError('このブラウザは音声認識に未対応です。⌨️ 入力ボタンをご利用ください。');
   }
 }
 
