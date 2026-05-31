@@ -141,10 +141,12 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .rp-topbar {
   display: flex; align-items: center; gap: 12px; padding: 14px 16px;
   border-bottom: 1px solid var(--border); flex-shrink: 0;
+  position: relative; z-index: 10;
 }
 .rp-close {
-  width: 34px; height: 34px; border-radius: 50%; background: var(--card);
-  font-size: 1rem; color: var(--text2); display: flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; border-radius: 50%; background: var(--card);
+  font-size: 1.1rem; color: var(--text); display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
 }
 .rp-title { flex: 1; font-size: 0.95rem; font-weight: 700; }
 .rp-progress-text { font-size: 0.75rem; color: var(--text3); }

@@ -310,16 +310,16 @@ function recordYourTurn() {
     r.continuous = false;
     r.maxAlternatives = 1;
 
-    resultEl.innerHTML = '<div class="recog-interim">聞いています...</div>';
+    resultEl.innerHTML = '<div class="recog-interim">🎙️ 今すぐ話してください！</div>';
 
-    // Safety net: if onend never fires (iOS bug), unfreeze after 10s
+    // Safety net: if onend never fires (iOS bug), unfreeze after 8s
     safetyTimer = setTimeout(() => {
       stopRecognition();
       setMicRecording(false);
       if (!latestSpoken && !hadError) {
-        showMicError('タイムアウトしました。もう一度試すか、⌨️ 入力でタイプしてください。');
+        showMicError('タイムアウトしました。もう一度タップして、すぐに話してください。');
       }
-    }, 10000);
+    }, 8000);
 
     r.onresult = event => {
       let interim = '', final = '';
@@ -365,6 +365,7 @@ function recordYourTurn() {
 }
 
 function evaluateYourTurn(turn, spoken) {
+  if (!rp) return; // overlay was closed before recognition finished
   const targets = [turn.en, ...(turn.accept || [])];
   const score = bestScore(spoken, targets);
   const resultEl = document.getElementById('rp-recog-result');
