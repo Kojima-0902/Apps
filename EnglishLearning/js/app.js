@@ -31,51 +31,7 @@ function speak(text, rate = 0.9, onEnd) {
   window.speechSynthesis.speak(u);
 }
 
-// ====== Speech Recognition (STT) — same pattern as TranslatorApp ======
-function startRecognition(onResult, onEnd) {
-  // abort any running instance first (matches TranslatorApp pattern)
-  if (recognition) { try { recognition.abort(); } catch (_) {} recognition = null; }
-
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) return false;
-
-  const r = new SR();
-  recognition = r;
-  r.lang = 'en-US';
-  r.interimResults = true;
-  r.continuous = false;
-  r.maxAlternatives = 1;
-
-  r.onresult = event => {
-    let interim = '', final = '';
-    for (let i = event.resultIndex; i < event.results.length; i++) {
-      const t = event.results[i][0].transcript;
-      if (event.results[i].isFinal) final += t;
-      else interim += t;
-    }
-    onResult(final || interim, !!final);
-  };
-
-  r.onerror = event => {
-    if (event.error !== 'aborted') {
-      const msgs = {
-        'not-allowed':         'マイクの許可が必要です。ブラウザの設定で許可してください。',
-        'no-speech':           '声が聞こえませんでした。大きな声でどうぞ 🎙️',
-        'network':             'ネットワークエラーです。Wi-Fi / 接続を確認してください。',
-        'audio-capture':       'マイクが使えません。他のアプリが使用中の可能性があります。',
-        'service-not-allowed': 'ブラウザの設定でマイクが無効になっています。',
-      };
-      showMicError(msgs[event.error] ?? `認識エラー: ${event.error}`);
-    }
-    onEnd();
-  };
-
-  r.onend = () => onEnd();
-
-  r.start();
-  return true;
-}
-
+// ====== Speech Recognition (STT) ======
 function stopRecognition() {
   if (recognition) { try { recognition.abort(); } catch (_) {} recognition = null; }
 }
@@ -319,36 +275,76 @@ function recordYourTurn() {
   const turn = rp?.data?.turns[rp.turnIdx];
   if (!turn) return;
 
-  // Stop TTS before mic
   window.speechSynthesis.cancel();
+
+  // Abort any previous instance before creating new one
+  stopRecognition();
+
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    showMicError('このブラウザは音声認識に未対応です。⌨️ 入力ボタンをご利用ください。');
+    return;
+  }
+
+  const r = new SR();
+  recognition = r;
+  r.lang = 'en-US';
+  r.interimResults = true;
+  r.continuous = false;
+  r.maxAlternatives = 1;
 
   const resultEl = document.getElementById('rp-recog-result');
   resultEl.classList.remove('hidden');
   resultEl.className = 'rp-recog-result';
   resultEl.innerHTML = '<div class="recog-interim">聞いています...</div>';
-
   setMicRecording(true);
+
   let latestSpoken = '';
+  let hadError = false; // prevents onend from overwriting the specific error message
 
-  const started = startRecognition(
-    (text, isFinal) => {
-      latestSpoken = text;
-      resultEl.innerHTML = `<div class="recog-interim">「${text}」</div>`;
-    },
-    () => {
-      // onEnd — same as TranslatorApp pattern
-      setMicRecording(false);
-      if (latestSpoken) {
-        evaluateYourTurn(turn, latestSpoken);
-      } else {
-        showMicError('聞き取れませんでした。もう一度試すか、⌨️ 入力でタイプしてください。');
-      }
+  r.onresult = event => {
+    let interim = '', final = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const t = event.results[i][0].transcript;
+      if (event.results[i].isFinal) final += t;
+      else interim += t;
     }
-  );
+    latestSpoken = final || interim;
+    if (latestSpoken) resultEl.innerHTML = `<div class="recog-interim">「${latestSpoken}」</div>`;
+  };
 
-  if (!started) {
+  r.onerror = event => {
+    if (event.error === 'aborted') return;
+    hadError = true;
+    const msgs = {
+      'not-allowed':
+        'マイクが許可されていません。\n【iOSの場合】設定 → Safari → マイク → このサイトを「許可」に変更してください。',
+      'no-speech':           '声が聞こえませんでした。大きな声でどうぞ 🎙️',
+      'network':             'ネットワークエラーです。Wi-Fi / 接続を確認してください。',
+      'audio-capture':       'マイクが使えません。他のアプリが使用中の可能性があります。',
+      'service-not-allowed': 'ブラウザの設定でマイクが無効です。',
+    };
+    showMicError(msgs[event.error] ?? `認識エラー: ${event.error}`);
+    // Do NOT call setMicRecording here — let onend handle cleanup
+  };
+
+  // onend always fires (after onresult and/or onerror)
+  r.onend = () => {
     setMicRecording(false);
-    showMicError('このブラウザは音声認識に未対応です。⌨️ 入力ボタンをご利用ください。');
+    if (latestSpoken) {
+      evaluateYourTurn(turn, latestSpoken);
+    } else if (!hadError) {
+      // No result and no specific error — show generic message
+      showMicError('聞き取れませんでした。もう一度試すか、⌨️ 入力でタイプしてください。');
+    }
+    // if hadError is true, showMicError was already called in onerror
+  };
+
+  try {
+    r.start();
+  } catch (e) {
+    setMicRecording(false);
+    showMicError('マイクを起動できませんでした。ページを再読み込みして試してください。');
   }
 }
 
