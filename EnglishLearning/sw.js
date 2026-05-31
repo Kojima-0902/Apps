@@ -1,4 +1,4 @@
-const CACHE = 'english-app-v18';
+const CACHE = 'english-app-v19';
 const STATIC = ['./index.html', './manifest.json'];
 
 self.addEventListener('install', e => {

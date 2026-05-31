@@ -23,7 +23,11 @@ function speak(text, rate = 0.9, onEnd) {
   u.onerror = () => { if (onEnd) onEnd(); };
 
   const voices = window.speechSynthesis.getVoices();
-  const v = voices.find(x => x.lang.startsWith('en') && /samantha|karen|moira|tessa|zira/i.test(x.name))
+  // 1. Enhanced (neural) voices — iOS 16+ optional download, most natural
+  const v = voices.find(x => x.lang.startsWith('en') && /enhanced/i.test(x.name))
+         // 2. Known natural-sounding named voices
+         || voices.find(x => x.lang.startsWith('en') && /samantha|ava|zoe|nicky|karen|moira|tessa|zira/i.test(x.name))
+         // 3. Any en-US, then any English as fallback
          || voices.find(x => x.lang === 'en-US')
          || voices.find(x => x.lang.startsWith('en'));
   if (v) u.voice = v;
