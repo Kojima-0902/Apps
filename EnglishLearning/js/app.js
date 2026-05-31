@@ -83,7 +83,7 @@ function initRecognition() {
   const r = new SR();
   r.lang = 'en-US';
   r.continuous = false;
-  r.interimResults = true;
+  r.interimResults = false; // false is more reliable on iOS Safari
   r.maxAlternatives = 3;
   return r;
 }
@@ -348,8 +348,7 @@ function recordYourTurn(retryCount = 0) {
   resultEl.className = 'rp-recog-result';
   resultEl.innerHTML = `<div class="recog-interim">${retryCount > 0 ? 'もう一度聞いています...' : '聞いています...'}</div>`;
 
-  let finalParts = [];
-  let interimText = '';
+  let spoken = '';
   let gotAnyResult = false;
 
   // Hard stop after 12 seconds so user isn't stuck
@@ -359,21 +358,16 @@ function recordYourTurn(retryCount = 0) {
 
   r.onresult = e => {
     gotAnyResult = true;
+    // With interimResults:false, all results here are final
     for (let i = e.resultIndex; i < e.results.length; i++) {
-      if (e.results[i].isFinal) {
-        finalParts.push(e.results[i][0].transcript);
-        interimText = '';
-      } else {
-        interimText = e.results[i][0].transcript;
-      }
+      spoken += e.results[i][0].transcript + ' ';
     }
-    const display = [...finalParts, interimText].join(' ').trim();
-    if (display) resultEl.innerHTML = `<div class="recog-interim">「${display}」</div>`;
+    spoken = spoken.trim();
+    if (spoken) resultEl.innerHTML = `<div class="recog-interim">「${spoken}」</div>`;
   };
 
   r.onend = () => {
     resetMicBtn();
-    const spoken = (finalParts.join(' ') || interimText).trim();
     if (spoken) {
       evaluateYourTurn(turn, spoken);
     } else if (!gotAnyResult && retryCount === 0) {
@@ -595,7 +589,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('rp-close-btn').addEventListener('click', closeRoleplay);
   document.getElementById('rp-intro-start').addEventListener('click', beginRoleplayFlow);
-  document.getElementById('rp-mic-btn').addEventListener('click', recordYourTurn);
+  document.getElementById('rp-mic-btn').addEventListener('click', () => recordYourTurn(0));
   document.getElementById('rp-hint-btn').addEventListener('click', () => {
     document.getElementById('rp-hint').classList.toggle('hidden');
   });
