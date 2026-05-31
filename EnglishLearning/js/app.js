@@ -149,6 +149,7 @@ function startRoleplay(id) {
 }
 
 function closeRoleplay() {
+  console.log('[×] closeRoleplay called');
   window.speechSynthesis.cancel();
   stopRecognition();
   setMicRecording(false);
@@ -288,7 +289,9 @@ function recordYourTurn() {
   let r;
   try {
     r = new SR();
+    console.log('[STT] new SR() succeeded');
   } catch (e) {
+    console.log('[STT] new SR() threw:', e.message);
     showMicError(`マイクを起動できませんでした: ${e.message} — ⌨️ 入力ボタンをご利用ください。`);
     return;
   }
@@ -315,12 +318,15 @@ function recordYourTurn() {
 
   // Safety net: if onend never fires (iOS bug), unfreeze after 8s
   safetyTimer = setTimeout(() => {
+    console.log('[STT] safety timer fired, latestSpoken=', JSON.stringify(latestSpoken), 'hadError=', hadError);
     stopRecognition();
     setMicRecording(false);
     if (!latestSpoken && !hadError) {
       showMicError('タイムアウトしました。もう一度タップして、すぐに話してください。');
     }
   }, 8000);
+
+  r.onstart = () => { console.log('[STT] onstart — mic is active'); };
 
   r.onresult = event => {
     let interim = '', final = '';
@@ -330,10 +336,12 @@ function recordYourTurn() {
       else interim += t;
     }
     latestSpoken = final || interim;
+    console.log('[STT] onresult interim=', JSON.stringify(interim), 'final=', JSON.stringify(final));
     if (latestSpoken) resultEl.innerHTML = `<div class="recog-interim">「${latestSpoken}」</div>`;
   };
 
   r.onerror = event => {
+    console.log('[STT] onerror event.error=', event.error);
     if (event.error === 'aborted') return;
     hadError = true;
     const msgs = {
@@ -348,6 +356,7 @@ function recordYourTurn() {
   };
 
   r.onend = () => {
+    console.log('[STT] onend, latestSpoken=', JSON.stringify(latestSpoken), 'hadError=', hadError);
     cleanup();
     if (latestSpoken) {
       evaluateYourTurn(turn, latestSpoken);
@@ -358,7 +367,9 @@ function recordYourTurn() {
 
   try {
     r.start();
+    console.log('[STT] r.start() called without throwing');
   } catch (e) {
+    console.log('[STT] r.start() threw:', e.message);
     cleanup();
     showMicError(`マイクを起動できませんでした: ${e.message}`);
   }
@@ -552,7 +563,19 @@ document.addEventListener('DOMContentLoaded', () => {
     if (todaysRoleplay) startRoleplay(todaysRoleplay.id);
   });
 
-  document.getElementById('rp-close-btn').addEventListener('click', closeRoleplay);
+  // iOS Safari sometimes drops click events on buttons inside fixed overlays.
+  // touchend + preventDefault is the reliable fallback; click handles desktop.
+  const closeBtn = document.getElementById('rp-close-btn');
+  closeBtn.addEventListener('touchstart', () => console.log('[×] touchstart reached'), { passive: true });
+  closeBtn.addEventListener('touchend', e => {
+    console.log('[×] touchend — calling closeRoleplay');
+    e.preventDefault(); // stop the synthetic click that follows
+    closeRoleplay();
+  });
+  closeBtn.addEventListener('click', () => {
+    console.log('[×] click event reached');
+    closeRoleplay();
+  });
   document.getElementById('rp-intro-start').addEventListener('click', beginRoleplayFlow);
   document.getElementById('rp-mic-btn').addEventListener('click', () => recordYourTurn(0));
   document.getElementById('rp-hint-btn').addEventListener('click', () => {

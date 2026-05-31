@@ -136,7 +136,12 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .overlay { position: fixed; inset: 0; background: var(--bg); z-index: 200; display: flex; }
 .rp-screen {
   width: 100%; max-width: 460px; margin: 0 auto; display: flex; flex-direction: column;
-  height: 100dvh; position: relative; overflow: hidden;
+  height: 100dvh; position: relative;
+  /* overflow:hidden on fixed containers swallows touch events on iOS — use clip instead */
+  overflow: clip;
+  /* force GPU compositing layer to fix iOS touch-event routing in fixed overlays */
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
 }
 .rp-topbar {
   display: flex; align-items: center; gap: 12px; padding: 14px 16px;
@@ -146,7 +151,7 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .rp-close {
   width: 44px; height: 44px; border-radius: 50%; background: var(--card);
   font-size: 1.1rem; color: var(--text); display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
+  flex-shrink: 0; cursor: pointer; touch-action: manipulation;
 }
 .rp-title { flex: 1; font-size: 0.95rem; font-weight: 700; }
 .rp-progress-text { font-size: 0.75rem; color: var(--text3); }
