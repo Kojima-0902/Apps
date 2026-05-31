@@ -185,6 +185,14 @@ function startRoleplay(id) {
   const data = ROLEPLAYS.find(r => r.id === id);
   if (!data) return;
   rp = { data, turnIdx: 0, spoke: 0, total: 0 };
+
+  // Pre-request mic permission so we get the dialog before speaking starts
+  if (navigator.mediaDevices?.getUserMedia) {
+    navigator.mediaDevices.getUserMedia({ audio: true })
+      .then(s => s.getTracks().forEach(t => t.stop()))
+      .catch(() => {});
+  }
+
   document.getElementById('rp-overlay').classList.remove('hidden');
   document.body.style.overflow = 'hidden';
 
@@ -286,32 +294,46 @@ function presentYourTurn(turn) {
 }
 
 let isRecording = false;
+let recogTimeout = null;
 
 function resetMicBtn() {
   isRecording = false;
+  if (recogTimeout) { clearTimeout(recogTimeout); recogTimeout = null; }
   const btn = document.getElementById('rp-mic-btn');
+  if (!btn) return;
   btn.classList.remove('recording');
   document.getElementById('rp-mic-label').textContent = 'タップして話す';
   document.getElementById('rp-mic-icon').textContent = '🎙️';
 }
 
-function recordYourTurn() {
+function showMicError(msg) {
+  const resultEl = document.getElementById('rp-recog-result');
+  resultEl.classList.remove('hidden');
+  resultEl.className = 'rp-recog-result retry';
+  resultEl.innerHTML = `
+    <div class="recog-badge" style="color:var(--ok)">⚠️ ${msg}</div>
+    <button class="btn-ghost" style="margin-top:10px;width:100%;font-size:1rem" id="retry-mic-btn">🎙️ もう一度試す</button>`;
+  document.getElementById('retry-mic-btn')?.addEventListener('click', () => recordYourTurn(0));
+}
+
+function recordYourTurn(retryCount = 0) {
   if (isRecording) {
-    // 2nd tap = stop recording
     if (recognition) { try { recognition.stop(); } catch (_) {} }
     return;
   }
 
-  const turn = rp.data.turns[rp.turnIdx];
+  const turn = rp?.data?.turns[rp.turnIdx];
+  if (!turn) return;
 
-  // Stop TTS if playing — mic and TTS interfere on some devices
+  // Stop TTS — mic and TTS can interfere
   window.speechSynthesis.cancel();
   stopTTSKeepAlive();
 
-  recognition = initRecognition();
-  if (!recognition) {
-    showToast('このブラウザは音声認識に対応していません。お手本を聞いてリピートしましょう。');
-    speak(turn.en);
+  const r = initRecognition();
+  recognition = r;
+
+  if (!r) {
+    showMicError('このブラウザは音声認識に未対応です。Safari / Chrome をお使いください。');
     document.getElementById('rp-hint').classList.remove('hidden');
     return;
   }
@@ -324,13 +346,19 @@ function recordYourTurn() {
   document.getElementById('rp-mic-icon').textContent = '🔴';
   resultEl.classList.remove('hidden');
   resultEl.className = 'rp-recog-result';
-  resultEl.innerHTML = '<div class="recog-interim">聞いています...</div>';
+  resultEl.innerHTML = `<div class="recog-interim">${retryCount > 0 ? 'もう一度聞いています...' : '聞いています...'}</div>`;
 
-  // Accumulate results; don't reset on each event (iOS fires multiple events)
   let finalParts = [];
   let interimText = '';
+  let gotAnyResult = false;
 
-  recognition.onresult = e => {
+  // Hard stop after 12 seconds so user isn't stuck
+  recogTimeout = setTimeout(() => {
+    if (r) { try { r.stop(); } catch (_) {} }
+  }, 12000);
+
+  r.onresult = e => {
+    gotAnyResult = true;
     for (let i = e.resultIndex; i < e.results.length; i++) {
       if (e.results[i].isFinal) {
         finalParts.push(e.results[i][0].transcript);
@@ -340,41 +368,40 @@ function recordYourTurn() {
       }
     }
     const display = [...finalParts, interimText].join(' ').trim();
-    resultEl.innerHTML = `<div class="recog-interim">「${display}」</div>`;
+    if (display) resultEl.innerHTML = `<div class="recog-interim">「${display}」</div>`;
   };
 
-  recognition.onend = () => {
+  r.onend = () => {
     resetMicBtn();
-    // Use final parts; fall back to interim if onend fires before final (iOS bug)
     const spoken = (finalParts.join(' ') || interimText).trim();
     if (spoken) {
       evaluateYourTurn(turn, spoken);
+    } else if (!gotAnyResult && retryCount === 0) {
+      // Auto-retry once — iOS often fires onend immediately on first attempt
+      setTimeout(() => recordYourTurn(1), 300);
     } else {
-      resultEl.classList.add('hidden');
-      showToast('聞き取れませんでした。もう少し大きな声でどうぞ 🎙️');
+      showMicError('聞き取れませんでした。大きな声でゆっくり話してください。');
     }
   };
 
-  recognition.onerror = ev => {
+  r.onerror = ev => {
     resetMicBtn();
-    resultEl.classList.add('hidden');
+    if (ev.error === 'aborted') return;
     const msgs = {
-      'not-allowed':    'マイクの許可が必要です。ブラウザのアドレスバー横の🔒をタップして許可してください。',
-      'no-speech':      '声が聞こえませんでした。もう少し大きな声でどうぞ 🎙️',
-      'network':        'ネットワークエラーです。接続を確認してください。',
-      'audio-capture':  'マイクが使えません。他のアプリがマイクを使用中かもしれません。',
-      'aborted':        '',
+      'not-allowed':   'マイクの許可が必要です。ブラウザの🔒または設定から許可してください。',
+      'no-speech':     '声が聞こえませんでした。大きな声でどうぞ 🎙️',
+      'network':       'ネットワークエラーです。Wi-Fi / 接続を確認してください。',
+      'audio-capture': 'マイクが使えません。他のアプリがマイクを使用中の可能性があります。',
+      'service-not-allowed': 'ブラウザの設定でマイクが無効になっています。',
     };
-    const msg = msgs[ev.error] ?? `認識エラー (${ev.error})`;
-    if (msg) showToast(msg);
+    showMicError(msgs[ev.error] ?? `認識エラー: ${ev.error}`);
   };
 
   try {
-    recognition.start();
+    r.start();
   } catch (e) {
     resetMicBtn();
-    resultEl.classList.add('hidden');
-    showToast('マイクを起動できませんでした。再度タップしてください。');
+    showMicError('マイクを起動できませんでした。再度タップしてください。');
   }
 }
 
