@@ -287,7 +287,9 @@ function recordYourTurn() {
   const turn = rp?.data?.turns[rp.turnIdx];
   if (!turn) return;
 
-  window.speechSynthesis.cancel();
+  // Do NOT call speechSynthesis.cancel() here — TTS is already done by the time
+  // the user can tap the mic, and calling cancel() on iOS can corrupt the audio
+  // session right before starting recognition, causing silent recognition failure.
   stopRecognition();
 
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
