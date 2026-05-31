@@ -358,6 +358,15 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 }
 #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+/* ===== On-screen debug panel ===== */
+#dbg-panel {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 9999;
+  background: rgba(0,0,0,0.88); color: #00ff88;
+  font-family: monospace; font-size: 10px; line-height: 1.5;
+  padding: 6px 8px; white-space: pre-wrap; word-break: break-all;
+  pointer-events: none; max-height: 180px; overflow-y: auto;
+}
+
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
   .tab-nav { padding-bottom: env(safe-area-inset-bottom); height: calc(var(--nav-h) + env(safe-area-inset-bottom)); }
   .scroll-area { padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 16px); }

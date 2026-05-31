@@ -1,5 +1,16 @@
 'use strict';
 
+// ====== On-screen debug panel ======
+const _dbgLines = [];
+function dbg(msg) {
+  const t = new Date().toISOString().slice(11, 19);
+  _dbgLines.push(`${t} ${msg}`);
+  if (_dbgLines.length > 20) _dbgLines.shift();
+  const el = document.getElementById('dbg-panel');
+  if (el) el.textContent = _dbgLines.join('\n');
+  console.log('[DBG]', msg);
+}
+
 // ====== State ======
 let currentTab = 'talk';
 let progress = loadProgress();
@@ -149,7 +160,7 @@ function startRoleplay(id) {
 }
 
 function closeRoleplay() {
-  console.log('[×] closeRoleplay called');
+  dbg('[×] closeRoleplay called');
   window.speechSynthesis.cancel();
   stopRecognition();
   setMicRecording(false);
@@ -289,9 +300,9 @@ function recordYourTurn() {
   let r;
   try {
     r = new SR();
-    console.log('[STT] new SR() succeeded');
+    dbg('[STT] new SR() OK');
   } catch (e) {
-    console.log('[STT] new SR() threw:', e.message);
+    dbg('[STT] new SR() ERR:'+e.message);
     showMicError(`マイクを起動できませんでした: ${e.message} — ⌨️ 入力ボタンをご利用ください。`);
     return;
   }
@@ -318,7 +329,7 @@ function recordYourTurn() {
 
   // Safety net: if onend never fires (iOS bug), unfreeze after 8s
   safetyTimer = setTimeout(() => {
-    console.log('[STT] safety timer fired, latestSpoken=', JSON.stringify(latestSpoken), 'hadError=', hadError);
+    dbg(`[STT] safety-timeout spoken="${latestSpoken}" err=${hadError}`);
     stopRecognition();
     setMicRecording(false);
     if (!latestSpoken && !hadError) {
@@ -326,7 +337,7 @@ function recordYourTurn() {
     }
   }, 8000);
 
-  r.onstart = () => { console.log('[STT] onstart — mic is active'); };
+  r.onstart = () => { dbg('[STT] onstart — mic active'); };
 
   r.onresult = event => {
     let interim = '', final = '';
@@ -336,12 +347,12 @@ function recordYourTurn() {
       else interim += t;
     }
     latestSpoken = final || interim;
-    console.log('[STT] onresult interim=', JSON.stringify(interim), 'final=', JSON.stringify(final));
+    dbg(`[STT] onresult int="${interim}" fin="${final}"`);
     if (latestSpoken) resultEl.innerHTML = `<div class="recog-interim">「${latestSpoken}」</div>`;
   };
 
   r.onerror = event => {
-    console.log('[STT] onerror event.error=', event.error);
+    dbg(`[STT] onerror err=${event.error}`);
     if (event.error === 'aborted') return;
     hadError = true;
     const msgs = {
@@ -356,7 +367,7 @@ function recordYourTurn() {
   };
 
   r.onend = () => {
-    console.log('[STT] onend, latestSpoken=', JSON.stringify(latestSpoken), 'hadError=', hadError);
+    dbg(`[STT] onend spoken="${latestSpoken}" err=${hadError}`);
     cleanup();
     if (latestSpoken) {
       evaluateYourTurn(turn, latestSpoken);
@@ -367,9 +378,9 @@ function recordYourTurn() {
 
   try {
     r.start();
-    console.log('[STT] r.start() called without throwing');
+    dbg('[STT] start() OK');
   } catch (e) {
-    console.log('[STT] r.start() threw:', e.message);
+    dbg('[STT] start() ERR:'+e.message);
     cleanup();
     showMicError(`マイクを起動できませんでした: ${e.message}`);
   }
@@ -566,16 +577,22 @@ document.addEventListener('DOMContentLoaded', () => {
   // iOS Safari sometimes drops click events on buttons inside fixed overlays.
   // touchend + preventDefault is the reliable fallback; click handles desktop.
   const closeBtn = document.getElementById('rp-close-btn');
-  closeBtn.addEventListener('touchstart', () => console.log('[×] touchstart reached'), { passive: true });
+  closeBtn.addEventListener('touchstart', () => dbg('[×] touchstart OK'), { passive: true });
   closeBtn.addEventListener('touchend', e => {
-    console.log('[×] touchend — calling closeRoleplay');
+    dbg('[×] touchend → close');
     e.preventDefault(); // stop the synthetic click that follows
     closeRoleplay();
   });
   closeBtn.addEventListener('click', () => {
-    console.log('[×] click event reached');
+    dbg('[×] click → close');
     closeRoleplay();
   });
+  // Log ALL touches on the overlay to detect if something covers the close btn
+  document.getElementById('rp-overlay').addEventListener('touchstart', e => {
+    const y = Math.round(e.touches[0].clientY);
+    const tgt = e.target.id || e.target.className.toString().slice(0, 30);
+    dbg(`overlay-touch y=${y} on:${tgt}`);
+  }, { passive: true });
   document.getElementById('rp-intro-start').addEventListener('click', beginRoleplayFlow);
   document.getElementById('rp-mic-btn').addEventListener('click', () => recordYourTurn(0));
   document.getElementById('rp-hint-btn').addEventListener('click', () => {
