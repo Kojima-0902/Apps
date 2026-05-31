@@ -220,6 +220,13 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .recog-hint-row { display: flex; gap: 8px; margin-top: 10px; }
 .w-ok { color: var(--good); font-weight: 700; }
 .w-miss { color: var(--text3); text-decoration: line-through; opacity: 0.7; }
+.rp-type-area { margin: 8px 0; }
+.rp-type-input {
+  width: 100%; padding: 12px 16px; border-radius: 12px; font-size: 1rem;
+  background: var(--card2); border: 1.5px solid var(--accent); color: var(--text);
+  outline: none; -webkit-appearance: none;
+}
+.rp-type-input::placeholder { color: var(--text3); }
 
 /* NPC turn */
 .rp-npc-turn {

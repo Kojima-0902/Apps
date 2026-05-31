@@ -186,13 +186,6 @@ function startRoleplay(id) {
   if (!data) return;
   rp = { data, turnIdx: 0, spoke: 0, total: 0 };
 
-  // Pre-request mic permission so we get the dialog before speaking starts
-  if (navigator.mediaDevices?.getUserMedia) {
-    navigator.mediaDevices.getUserMedia({ audio: true })
-      .then(s => s.getTracks().forEach(t => t.stop()))
-      .catch(() => {});
-  }
-
   document.getElementById('rp-overlay').classList.remove('hidden');
   document.body.style.overflow = 'hidden';
 
@@ -289,6 +282,9 @@ function presentYourTurn(turn) {
   btn.classList.remove('recording', 'success');
   document.getElementById('rp-mic-label').textContent = 'タップして話す';
   document.getElementById('rp-mic-icon').textContent = '🎙️';
+  // Reset text input area
+  document.getElementById('rp-type-area').classList.add('hidden');
+  document.getElementById('rp-type-input').value = '';
   const chat = document.getElementById('rp-chat');
   chat.scrollTop = chat.scrollHeight;
 }
@@ -370,23 +366,21 @@ function recordYourTurn(retryCount = 0) {
     resetMicBtn();
     if (spoken) {
       evaluateYourTurn(turn, spoken);
-    } else if (!gotAnyResult && retryCount === 0) {
-      // Auto-retry once — iOS often fires onend immediately on first attempt
-      setTimeout(() => recordYourTurn(1), 300);
     } else {
-      showMicError('聞き取れませんでした。大きな声でゆっくり話してください。');
+      // Show error with raw code so we can diagnose what's happening
+      showMicError('聞き取れませんでした。もう一度試すか、⌨️ 入力ボタンでタイプしてください。');
     }
   };
 
   r.onerror = ev => {
     resetMicBtn();
-    if (ev.error === 'aborted') return;
     const msgs = {
-      'not-allowed':   'マイクの許可が必要です。ブラウザの🔒または設定から許可してください。',
-      'no-speech':     '声が聞こえませんでした。大きな声でどうぞ 🎙️',
-      'network':       'ネットワークエラーです。Wi-Fi / 接続を確認してください。',
-      'audio-capture': 'マイクが使えません。他のアプリがマイクを使用中の可能性があります。',
+      'not-allowed':         'マイクの許可が必要です。ブラウザの設定で許可してください。',
+      'no-speech':           '声が聞こえませんでした。大きな声でどうぞ 🎙️',
+      'network':             'ネットワークエラーです。Wi-Fi / 接続を確認してください。',
+      'audio-capture':       'マイクが使えません。他のアプリがマイクを使用中の可能性があります。',
       'service-not-allowed': 'ブラウザの設定でマイクが無効になっています。',
+      'aborted':             '録音が中断されました。もう一度試してください。',
     };
     showMicError(msgs[ev.error] ?? `認識エラー: ${ev.error}`);
   };
@@ -601,6 +595,21 @@ document.addEventListener('DOMContentLoaded', () => {
     addChatBubble('you', turn.en, turn.ja);
     rp.turnIdx++;
     nextTurn();
+  });
+  document.getElementById('rp-type-btn').addEventListener('click', () => {
+    const area = document.getElementById('rp-type-area');
+    area.classList.toggle('hidden');
+    if (!area.classList.contains('hidden')) document.getElementById('rp-type-input').focus();
+  });
+  const submitTyped = () => {
+    const val = document.getElementById('rp-type-input').value.trim();
+    if (!val || !rp) return;
+    evaluateYourTurn(rp.data.turns[rp.turnIdx], val);
+    document.getElementById('rp-type-area').classList.add('hidden');
+  };
+  document.getElementById('rp-type-submit').addEventListener('click', submitTyped);
+  document.getElementById('rp-type-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') submitTyped();
   });
   document.getElementById('rp-npc-replay').addEventListener('click', () => {
     const prev = rp.data.turns[rp.turnIdx - 1];
