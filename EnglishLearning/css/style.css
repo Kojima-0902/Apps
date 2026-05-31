@@ -208,9 +208,10 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 }
 .btn-ghost:active { background: var(--card2); }
 
-.rp-recog-result { border-radius: 12px; padding: 12px; margin-bottom: 12px; font-size: 0.85rem; }
+.rp-recog-result { border-radius: 12px; padding: 12px; margin-bottom: 12px; font-size: 0.85rem; background: rgba(0,212,255,0.06); border: 1px solid rgba(0,212,255,0.2); }
 .rp-recog-result.success { background: rgba(16,185,129,0.12); border: 1px solid var(--good); }
 .rp-recog-result.retry { background: rgba(245,158,11,0.1); border: 1px solid var(--ok); }
+.recog-interim { color: var(--accent); font-style: italic; font-size: 0.95rem; animation: pulse 1.2s ease infinite; }
 .recog-badge { font-weight: 800; margin-bottom: 6px; }
 .rp-recog-result.success .recog-badge { color: var(--good); }
 .rp-recog-result.retry .recog-badge { color: var(--ok); }
