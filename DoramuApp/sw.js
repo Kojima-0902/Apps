@@ -1,4 +1,4 @@
-const CACHE = 'doramu-app-v1';
+const CACHE = 'doramu-app-v2';
 const ASSETS = [
   './',
   './index.html',

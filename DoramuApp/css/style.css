@@ -135,6 +135,65 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   margin: 24px 0 20px;
 }
 
+/* ===== Settings ===== */
+.settings-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 4px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text2);
+}
+.settings-toggle .chevron {
+  font-size: 1.1rem;
+  transition: transform var(--transition);
+}
+.settings-toggle[aria-expanded="true"] .chevron { transform: rotate(90deg); }
+
+.settings-panel {
+  display: none;
+  padding: 8px 0 4px;
+}
+.settings-panel.open { display: block; }
+
+.setting { display: block; margin-top: 14px; }
+.setting-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 0.8125rem;
+  color: var(--accent);
+  margin-bottom: 6px;
+}
+.setting-value {
+  font-variant-numeric: tabular-nums;
+  color: var(--text2);
+  font-weight: 600;
+}
+.setting-select {
+  width: 100%;
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 0.9375rem;
+}
+.setting-select:disabled { opacity: 0.5; }
+.setting-hint {
+  margin-top: 8px;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--text2);
+}
+.setting-range {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
 /* ===== Serif Grid ===== */
 .serif-grid {
   display: grid;
