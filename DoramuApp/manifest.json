@@ -1,0 +1,22 @@
+{
+    "name": "Doramu App - 音声で会話",
+    "short_name": "Doramu",
+    "description": "入力した文章や定型セリフを日本語音声で読み上げる会話アプリ",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#0a0a18",
+    "theme_color": "#1a1a2e",
+    "orientation": "portrait",
+    "icons": [
+        {
+            "src": "icons/icon-192.svg",
+            "sizes": "192x192",
+            "type": "image/svg+xml"
+        },
+        {
+            "src": "icons/icon-512.svg",
+            "sizes": "512x512",
+            "type": "image/svg+xml"
+        }
+    ]
+}

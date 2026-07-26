@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <rect width="192" height="192" rx="40" fill="#0a0a18"/>
+  <rect x="8" y="8" width="176" height="176" rx="34" fill="#111127"/>
+  <!-- Speaker body -->
+  <path d="M58 76 H80 L106 52 V140 L80 116 H58 Z" fill="#1e1e3c" stroke="#7c3aed" stroke-width="4" stroke-linejoin="round"/>
+  <!-- Sound waves -->
+  <path d="M122 74 Q136 96 122 118" fill="none" stroke="#00d4ff" stroke-width="7" stroke-linecap="round"/>
+  <path d="M140 62 Q160 96 140 130" fill="none" stroke="#00d4ff" stroke-width="7" stroke-linecap="round" opacity="0.6"/>
+</svg>
