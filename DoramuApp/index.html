@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#1a1a2e">
+    <title>Doramu App - 音声で会話</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icons/icon-192.svg">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header class="header">
+            <h1 class="header-title">Doramu App</h1>
+            <p class="header-subtitle">タップして話す</p>
+        </header>
+
+        <main class="main">
+            <!-- 自由入力 -->
+            <section class="input-section">
+                <label class="field">
+                    <span class="field-label">文章を指定する場合はここに入力</span>
+                    <textarea id="text-input" class="field-input" rows="3"
+                        placeholder="ここに入力した文章を読み上げます"
+                        autocomplete="off" autocapitalize="off"></textarea>
+                </label>
+
+                <button id="speak-btn" class="btn btn-primary">発話</button>
+
+                <div class="btn-row">
+                    <button id="stop-btn" class="btn btn-sub" disabled>停止</button>
+                    <button id="clear-btn" class="btn btn-sub">クリア</button>
+                </div>
+            </section>
+
+            <hr class="divider">
+
+            <!-- セリフ一覧 -->
+            <section class="serif-section">
+                <div id="serif-grid" class="serif-grid"></div>
+            </section>
+        </main>
+
+        <!-- Toast -->
+        <div id="toast" class="toast"></div>
+    </div>
+
+    <script src="js/data.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
