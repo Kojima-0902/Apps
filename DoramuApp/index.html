@@ -39,6 +39,42 @@
 
             <hr class="divider">
 
+            <!-- 音声設定 -->
+            <section class="settings">
+                <button id="settings-toggle" class="settings-toggle" aria-expanded="false"
+                    aria-controls="settings-panel">
+                    <span>音声設定</span>
+                    <span class="chevron">›</span>
+                </button>
+
+                <div id="settings-panel" class="settings-panel">
+                    <label class="setting">
+                        <span class="setting-label">声</span>
+                        <select id="voice-select" class="setting-select"></select>
+                    </label>
+                    <p id="voice-hint" class="setting-hint"></p>
+
+                    <label class="setting">
+                        <span class="setting-label">話速 <span id="rate-value" class="setting-value"></span></span>
+                        <input id="rate-range" class="setting-range" type="range"
+                            min="0.5" max="1.5" step="0.05">
+                    </label>
+
+                    <label class="setting">
+                        <span class="setting-label">高さ <span id="pitch-value" class="setting-value"></span></span>
+                        <input id="pitch-range" class="setting-range" type="range"
+                            min="0.5" max="1.5" step="0.05">
+                    </label>
+
+                    <div class="btn-row">
+                        <button id="test-btn" class="btn btn-sub">試し発話</button>
+                        <button id="reset-btn" class="btn btn-sub">既定値に戻す</button>
+                    </div>
+                </div>
+            </section>
+
+            <hr class="divider">
+
             <!-- セリフ一覧 -->
             <section class="serif-section">
                 <div id="serif-grid" class="serif-grid"></div>
